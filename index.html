@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANTROR — PDF Merger</title>
+<meta name="description" content="Merge PDFs exactly the way you want. Select specific pages, reorder them, preview, and download — entirely in your browser.">
+<!-- Theme boot: applied before first paint so the correct theme shows with no flash. -->
+<script>
+try{
+  var t = localStorage.getItem('antror-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.dataset.theme = t;
+}catch(e){}
+</script>
+<link rel="stylesheet" href="css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ======= Top bar ======= -->
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="12.5" y="3.5" width="15" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="4.5" y="10.5" width="15" height="19" rx="3" fill="var(--accent)"/>
+        <path d="M9 16.5h6M9 20.5h6" stroke="var(--bg)" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-name">ANTROR</span>
+      <span class="brand-div">/</span>
+      <span class="brand-sub">PDF Merger</span>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="btnUndo" aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)"></button>
+      <button class="icon-btn" id="btnRedo" aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)"></button>
+      <span class="top-sep" aria-hidden="true"></span>
+      <button id="btnClearAll" aria-label="Clear workspace"></button>
+      <button class="icon-btn" id="btnTheme" aria-label="Toggle theme"></button>
+    </div>
+  </div>
+</header>
+
+<main class="workspace">
+  <!-- ======= Empty state ======= -->
+  <section id="emptyState" class="empty">
+    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+      <rect x="12.5" y="3.5" width="15" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+      <rect x="4.5" y="10.5" width="15" height="19" rx="3" fill="var(--accent)"/>
+      <path d="M9 16.5h6M9 20.5h6" stroke="var(--bg)" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <h1 class="empty-name">ANTROR</h1>
+    <p class="empty-sub">PDF Merger</p>
+    <p class="empty-tag">Merge PDFs exactly the way you want.</p>
+    <ul class="empty-feats">
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Select specific pages</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Reorder any page</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Preview the full result</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Download a single PDF</li>
+    </ul>
+    <div class="empty-cta">
+      <button class="btn primary" id="btnAddEmpty" style="padding:11px 24px;font-size:14.5px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>
+        Add PDFs
+      </button>
+      <span class="empty-hint">or drag &amp; drop PDF files anywhere on this page</span>
+    </div>
+    <p class="empty-privacy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      Your files stay in your browser — nothing is uploaded.
+    </p>
+  </section>
+
+  <!-- ======= Workspace ======= -->
+  <div id="appLayout" class="layout" hidden>
+    <section class="docs-col">
+      <div class="col-head">
+        <h2 class="label">Documents</h2>
+        <span id="docsMeta" class="mono meta"></span>
+        <div class="col-tools">
+          <div class="seg" id="zoomSeg" role="group" aria-label="Thumbnail size">
+            <button type="button" data-zoom="s" title="Small thumbnails" aria-pressed="false">S</button>
+            <button type="button" data-zoom="m" class="on" title="Medium thumbnails" aria-pressed="true">M</button>
+            <button type="button" data-zoom="l" title="Large thumbnails" aria-pressed="false">L</button>
+          </div>
+          <button class="btn ghost sm" id="btnAddTop">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Add PDFs
+          </button>
+        </div>
+      </div>
+      <div id="docsList" class="docs-list"></div>
+    </section>
+
+    <aside class="seq-panel" aria-label="Merge sequence">
+      <div class="seq-head">
+        <h2 class="label">Merge sequence</h2>
+        <span id="seqCount" class="count-chip mono" aria-live="polite">0</span>
+        <button class="icon-btn" id="btnSeqReset" aria-label="Rebuild sequence from selection in document order" title="Rebuild from selection (document order)"></button>
+      </div>
+      <ul id="seqList" class="seq-scroll" role="list"></ul>
+      <div class="seq-foot">Drag rows to reorder — the final PDF follows this exact order.</div>
+    </aside>
+  </div>
+</main>
+
+<!-- ======= Status bar ======= -->
+<footer id="statusBar" class="statusbar" hidden>
+  <div class="statusbar-in" aria-live="polite">
+    <div class="sb-privacy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      <span>Files stay in your browser</span>
+    </div>
+    <div class="sb-stats">
+      <div class="sb-stat"><b id="statDocs">0</b><span>PDFs</span></div>
+      <span class="sb-sep"></span>
+      <div class="sb-stat"><b id="statSel">0</b><span>Selected pages</span></div>
+      <span class="sb-sep"></span>
+      <div class="sb-stat"><b id="statFinal">0</b><span>Final pages</span></div>
+    </div>
+    <div class="sb-actions">
+      <button class="btn ghost" id="btnPreview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.7"/></svg>
+        <span>Preview</span>
+      </button>
+      <button class="btn primary" id="btnMerge">Merge PDFs</button>
+    </div>
+  </div>
+</footer>
+
+<!-- ======= Site footer ======= -->
+<footer id="siteFooter">
+  <div class="foot-in">
+    <div class="foot-brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="12.5" y="3.5" width="15" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="4.5" y="10.5" width="15" height="19" rx="3" fill="var(--accent)"/>
+        <path d="M9 16.5h6M9 20.5h6" stroke="var(--bg)" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="foot-name">ANTROR</span>
+      <span class="foot-div">/</span>
+      <span class="foot-sub">PDF Merger</span>
+    </div>
+    <nav class="foot-links" aria-label="Legal and information">
+      <button type="button" data-legal="privacy">Privacy Policy</button>
+      <button type="button" data-legal="terms">Terms &amp; Conditions</button>
+      <button type="button" data-legal="about">About</button>
+      <button type="button" data-legal="contact">Contact</button>
+    </nav>
+    <p class="foot-copy mono">© <span id="footYear"></span> ANTROR · Runs entirely in your browser — your files never leave your device.</p>
+  </div>
+</footer>
+<!-- ======= Overlays ======= -->
+<div id="dropOverlay" aria-hidden="true">
+  <div class="drop-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M13.5 3v5.5H19"/><path d="M12 12v5M9.5 14.5h5"/></svg>
+    <p>Drop PDFs to add</p>
+    <span>They never leave your device.</span>
+  </div>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<div id="modalRoot"></div>
+<input type="file" id="fileInput" accept="application/pdf,.pdf" multiple hidden>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
