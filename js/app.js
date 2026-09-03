@@ -1176,7 +1176,7 @@ const LEGAL = {
         <p>Questions, bug reports, and feature requests are all welcome.</p>
         <div class="legal-contact">
           <b>Email</b><br>
-          <a href="mailto:support@antror.com">support@antror.com</a>
+          <a href="mailto:antrorofficial@gmail.com">antrorofficial@gmail.com</a>
         </div>
         <h4>Reporting a bug</h4>
         <p>Please include your browser and version, your operating system, the steps you took, and any error message shown. There is no need to attach confidential documents — issues are almost always reproducible with any sample PDF.</p>
