@@ -1,11 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ANTROR — PDF Merger</title>
-<meta name="description" content="Merge PDFs exactly the way you want. Select specific pages, reorder them, preview, and download — entirely in your browser.">
-<!-- Theme boot: applied before first paint so the correct theme shows with no flash. -->
+<title>ANTROR — Browser Tools</title>
+<meta name="description" content="Free browser tools: merge PDFs, remove image & video watermarks. Everything runs locally — your files never leave your device.">
 <script>
 try{
   var t = localStorage.getItem('antror-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -22,7 +22,7 @@ try{
 <!-- ======= Top bar ======= -->
 <header class="topbar">
   <div class="topbar-in">
-    <div class="brand">
+    <a class="brand" href="#/" aria-label="ANTROR — all tools">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
         <rect x="12.5" y="3.5" width="15" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
         <rect x="4.5" y="10.5" width="15" height="19" rx="3" fill="var(--accent)"/>
@@ -30,83 +30,302 @@ try{
       </svg>
       <span class="brand-name">ANTROR</span>
       <span class="brand-div">/</span>
-      <span class="brand-sub">PDF Merger</span>
-    </div>
+      <span class="brand-sub" id="topSub">Tools</span>
+    </a>
     <div class="top-actions">
-      <button class="icon-btn" id="btnUndo" aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)"></button>
-      <button class="icon-btn" id="btnRedo" aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)"></button>
-      <span class="top-sep" aria-hidden="true"></span>
-      <button id="btnClearAll" aria-label="Clear workspace"></button>
+      <a class="btn ghost sm" data-scope="not-home" href="#/">All tools</a>
+      <span class="scope-row" data-scope="merge">
+        <button class="icon-btn" id="btnUndo" aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)"></button>
+        <button class="icon-btn" id="btnRedo" aria-label="Redo (Ctrl+Y)" title="Redo (Ctrl+Y)"></button>
+        <span class="top-sep" aria-hidden="true"></span>
+        <button id="btnClearAll" aria-label="Clear workspace"></button>
+      </span>
       <button class="icon-btn" id="btnTheme" aria-label="Toggle theme"></button>
     </div>
   </div>
 </header>
 
-<main class="workspace">
-  <!-- ======= Empty state ======= -->
-  <section id="emptyState" class="empty">
-    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-      <rect x="12.5" y="3.5" width="15" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
-      <rect x="4.5" y="10.5" width="15" height="19" rx="3" fill="var(--accent)"/>
-      <path d="M9 16.5h6M9 20.5h6" stroke="var(--bg)" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-    <h1 class="empty-name">ANTROR</h1>
-    <p class="empty-sub">PDF Merger</p>
-    <p class="empty-tag">Merge PDFs exactly the way you want.</p>
-    <ul class="empty-feats">
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Select specific pages</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Reorder any page</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Preview the full result</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Download a single PDF</li>
-    </ul>
-    <div class="empty-cta">
-      <button class="btn primary" id="btnAddEmpty" style="padding:11px 24px;font-size:14.5px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>
-        Add PDFs
-      </button>
-      <span class="empty-hint">or drag &amp; drop PDF files anywhere on this page</span>
+<main>
+<!-- ================= HOME ================= -->
+<section id="view-home" class="home-wrap">
+  <div class="home">
+    <p class="label home-kicker">ANTROR / TOOLS</p>
+    <h1 class="home-title">Everyday file tools.<br>Zero uploads.</h1>
+    <p class="home-sub">Every tool runs entirely inside your browser. Files are processed on your device and never touch a server.</p>
+    <div class="tool-grid">
+      <a class="tool-card" href="#/merge">
+        <span class="tool-ic">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="14.5" y="5.5" width="13" height="17" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="4.5" y="11.5" width="13" height="17" rx="3" fill="currentColor" opacity=".16"/><rect x="4.5" y="11.5" width="13" height="17" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8.5 17.5h5M8.5 21.5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </span>
+        <span class="tool-name">PDF Merger</span>
+        <span class="tool-desc">Select exact pages from multiple PDFs, arrange them in any order, merge and download.</span>
+        <span class="tool-meta mono">PDF · MULTI-FILE · 100% LOCAL</span>
+      </a>
+      <a class="tool-card" href="#/image-watermark">
+        <span class="tool-ic">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4.5 16.5l4-3.5 3.5 3 3-2.5 4.5 3.5"/></svg>
+        </span>
+        <span class="tool-name">Image Watermark Remover</span>
+        <span class="tool-desc">Mark a watermark, erase it with smart fill. JPG, PNG &amp; WebP — processed on your device.</span>
+        <span class="tool-meta mono">JPG · PNG · WEBP · PRIVATE</span>
+      </a>
+      <a class="tool-card" href="#/video-watermark">
+        <span class="tool-ic">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="3"/><path d="M10.2 9.2l4.8 2.8-4.8 2.8z"/></svg>
+        </span>
+        <span class="tool-name">Video Watermark Remover</span>
+        <span class="tool-desc">Cover static watermarks in any video with smart fill — no upload, no server, no queue.</span>
+        <span class="tool-meta mono">MP4 · WEBM · LOCAL PROCESSING</span>
+      </a>
     </div>
-    <p class="empty-privacy">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-      Your files stay in your browser — nothing is uploaded.
-    </p>
-  </section>
+    <p class="home-more mono">In development — Split PDF · Compress PDF · Rotate pages · Extract pages</p>
+  </div>
+</section>
 
-  <!-- ======= Workspace ======= -->
-  <div id="appLayout" class="layout" hidden>
-    <section class="docs-col">
-      <div class="col-head">
-        <h2 class="label">Documents</h2>
-        <span id="docsMeta" class="mono meta"></span>
-        <div class="col-tools">
-          <div class="seg" id="zoomSeg" role="group" aria-label="Thumbnail size">
-            <button type="button" data-zoom="s" title="Small thumbnails" aria-pressed="false">S</button>
-            <button type="button" data-zoom="m" class="on" title="Medium thumbnails" aria-pressed="true">M</button>
-            <button type="button" data-zoom="l" title="Large thumbnails" aria-pressed="false">L</button>
-          </div>
-          <button class="btn ghost sm" id="btnAddTop">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            Add PDFs
-          </button>
-        </div>
+<!-- ================= PDF MERGER ================= -->
+<section id="view-merge" hidden>
+  <div class="workspace">
+    <!-- Empty state -->
+    <section id="emptyState" class="empty">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="12.5" y="3.5" width="15" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="4.5" y="10.5" width="15" height="19" rx="3" fill="var(--accent)"/>
+        <path d="M9 16.5h6M9 20.5h6" stroke="var(--bg)" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <h1 class="empty-name">PDF MERGER</h1>
+      <p class="empty-sub">ANTROR TOOLS</p>
+      <p class="empty-tag">Merge PDFs exactly the way you want.</p>
+      <ul class="empty-feats">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Select specific pages</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Reorder any page</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Preview the full result</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Download a single PDF</li>
+      </ul>
+      <div class="empty-cta">
+        <button class="btn primary" id="btnAddEmpty" style="padding:11px 24px;font-size:14.5px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>
+          Add PDFs
+        </button>
+        <span class="empty-hint">or drag &amp; drop PDF files anywhere on this page</span>
       </div>
-      <div id="docsList" class="docs-list"></div>
+      <p class="empty-privacy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        Your files stay in your browser — nothing is uploaded.
+      </p>
     </section>
 
-    <aside class="seq-panel" aria-label="Merge sequence">
-      <div class="seq-head">
-        <h2 class="label">Merge sequence</h2>
-        <span id="seqCount" class="count-chip mono" aria-live="polite">0</span>
-        <button class="icon-btn" id="btnSeqReset" aria-label="Rebuild sequence from selection in document order" title="Rebuild from selection (document order)"></button>
-      </div>
-      <ul id="seqList" class="seq-scroll" role="list"></ul>
-      <div class="seq-foot">Drag rows to reorder — the final PDF follows this exact order.</div>
-    </aside>
+    <!-- Workspace -->
+    <div id="appLayout" class="layout" hidden>
+      <section class="docs-col">
+        <div class="col-head">
+          <h2 class="label">Documents</h2>
+          <span id="docsMeta" class="mono meta"></span>
+          <div class="col-tools">
+            <div class="seg" id="zoomSeg" role="group" aria-label="Thumbnail size">
+              <button type="button" data-zoom="s" title="Small thumbnails" aria-pressed="false">S</button>
+              <button type="button" data-zoom="m" class="on" title="Medium thumbnails" aria-pressed="true">M</button>
+              <button type="button" data-zoom="l" title="Large thumbnails" aria-pressed="false">L</button>
+            </div>
+            <button class="btn ghost sm" id="btnAddTop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Add PDFs
+            </button>
+          </div>
+        </div>
+        <div id="docsList" class="docs-list"></div>
+      </section>
+
+      <aside class="seq-panel" aria-label="Merge sequence">
+        <div class="seq-head">
+          <h2 class="label">Merge sequence</h2>
+          <span id="seqCount" class="count-chip mono" aria-live="polite">0</span>
+          <button class="icon-btn" id="btnSeqReset" aria-label="Rebuild sequence from selection in document order" title="Rebuild from selection (document order)"></button>
+        </div>
+        <ul id="seqList" class="seq-scroll" role="list"></ul>
+        <div class="seq-foot">Drag rows to reorder — the final PDF follows this exact order.</div>
+      </aside>
+    </div>
   </div>
+</section>
+
+<!-- ================= IMAGE WATERMARK REMOVER ================= -->
+<section id="view-image-watermark" hidden>
+  <div class="tool-wrap">
+    <div class="col-head">
+      <h2 class="label">Image watermark remover</h2>
+      <span class="meta">Runs entirely on your device.</span>
+    </div>
+
+    <!-- Empty -->
+    <div id="imEmpty" class="tool-empty">
+      <div class="tool-empty-inner">
+        <span class="tool-empty-ic">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4.5 16.5l4-3.5 3.5 3 3-2.5 4.5 3.5"/></svg>
+        </span>
+        <h3 class="tool-empty-title">Remove a watermark from an image</h3>
+        <p class="tool-empty-sub">Drag a box over each watermark and the area behind it is reconstructed — right here in your browser.</p>
+        <div id="imDrop" class="drop-box2" tabindex="0" role="button" aria-label="Add an image">
+          <button class="btn primary" id="btnImAdd" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Add image
+          </button>
+          <span class="drop-hint">or drop a JPG, PNG or WebP here</span>
+        </div>
+        <ul class="tool-tips">
+          <li>Works best when the watermark sits on a plain or soft background</li>
+          <li>For repeated marks, draw one box per watermark — as many as you need</li>
+          <li>Nothing is uploaded. The image is erased locally, then downloaded</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Editor -->
+    <div id="imEditor" hidden>
+      <div class="tool-bar">
+        <span id="imInfo" class="file-chip mono"></span>
+        <button class="chip-btn" id="btnImReplace" type="button">Replace</button>
+        <span class="tool-bar-sep"></span>
+        <div class="seg" id="imModeSeg" role="group" aria-label="Removal mode">
+          <button type="button" data-mode="fill" class="on" title="Reconstruct the background">Smart fill</button>
+          <button type="button" data-mode="blur" title="Blur the marked area">Blur</button>
+          <button type="button" data-mode="pixel" title="Pixelate the marked area">Pixelate</button>
+        </div>
+        <span class="tool-bar-spacer"></span>
+        <button class="chip-btn" id="btnImUndo" type="button">Undo box</button>
+        <button class="chip-btn" id="btnImClear" type="button">Clear boxes</button>
+      </div>
+
+      <div class="stage">
+        <div class="stage-fit checker" id="imStageFit">
+          <canvas id="imCanvas"></canvas>
+          <div class="region-layer" id="imLayer" aria-label="Watermark areas"></div>
+        </div>
+      </div>
+      <p class="tool-hint"><span id="imRegionCount" class="mono">0</span> <span id="imHint">— drag on the image to cover each watermark</span></p>
+
+      <div class="tool-actions">
+        <button class="btn primary" id="btnImRun" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          Remove watermark
+        </button>
+        <span class="tool-actions-note">The marked areas are reconstructed in place — your original file is never modified.</span>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="imResult" hidden>
+      <div class="tool-bar">
+        <div class="seg" id="imToggleSeg" role="group" aria-label="Compare result">
+          <button type="button" data-view="orig">Original</button>
+          <button type="button" data-view="clean" class="on">Cleaned</button>
+        </div>
+        <span class="tool-bar-spacer"></span>
+        <button class="chip-btn" id="btnImBack" type="button">Remove more</button>
+      </div>
+      <div class="stage">
+        <div class="stage-fit checker"><img id="imResultImg" alt="Cleaned image result"></div>
+      </div>
+      <div class="tool-actions">
+        <a class="btn primary" id="btnImDownload" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4v10.5M7.5 11 12 15.5 16.5 11"/><path d="M4.5 19.5h15"/></svg>
+          Download image
+        </a>
+        <button class="btn ghost" id="btnImReset" type="button">Start over</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VIDEO WATERMARK REMOVER ================= -->
+<section id="view-video-watermark" hidden>
+  <div class="tool-wrap">
+    <div class="col-head">
+      <h2 class="label">Video watermark remover</h2>
+      <span class="meta">Static watermarks · processed locally in real time.</span>
+    </div>
+
+    <!-- Empty -->
+    <div id="vmEmpty" class="tool-empty">
+      <div class="tool-empty-inner">
+        <span class="tool-empty-ic">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="3"/><path d="M10.2 9.2l4.8 2.8-4.8 2.8z"/></svg>
+        </span>
+        <h3 class="tool-empty-title">Remove a watermark from a video</h3>
+        <p class="tool-empty-sub">Draw a box over a static watermark — every frame is cleaned on your device while the video plays through once.</p>
+        <div id="vmDrop" class="drop-box2" tabindex="0" role="button" aria-label="Add a video">
+          <button class="btn primary" id="btnVmAdd" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Add video
+          </button>
+          <span class="drop-hint">or drop an MP4 or WebM here</span>
+        </div>
+        <ul class="tool-tips">
+          <li>Made for static watermarks — logos or text that stay in one place</li>
+          <li>Processing takes about as long as the video itself, with live progress</li>
+          <li>The video is re-encoded locally — it is never uploaded anywhere</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Editor -->
+    <div id="vmEditor" hidden>
+      <div class="tool-bar">
+        <span id="vmInfo" class="file-chip mono"></span>
+        <button class="chip-btn" id="btnVmReplace" type="button">Replace</button>
+        <span class="tool-bar-sep"></span>
+        <div class="seg" id="vmModeSeg" role="group" aria-label="Removal mode">
+          <button type="button" data-mode="fill" class="on" title="Reconstruct the background">Smart fill</button>
+          <button type="button" data-mode="blur" title="Blur the marked area">Blur</button>
+          <button type="button" data-mode="pixel" title="Pixelate the marked area">Pixelate</button>
+        </div>
+        <span class="tool-bar-spacer"></span>
+        <button class="chip-btn" id="btnVmUndo" type="button">Undo box</button>
+        <button class="chip-btn" id="btnVmClear" type="button">Clear boxes</button>
+      </div>
+
+      <div class="stage">
+        <div class="stage-fit" id="vmStageFit">
+          <video id="vmVideo" playsinline preload="metadata"></video>
+          <div class="region-layer" id="vmLayer" aria-label="Watermark areas"></div>
+        </div>
+      </div>
+      <div class="vm-controls">
+        <button class="icon-btn" id="btnVmPlay" aria-label="Play or pause preview"></button>
+        <input type="range" class="seek" id="vmSeek" min="0" max="1000" value="0" aria-label="Seek">
+        <span class="mono vm-time" id="vmTime">0:00 / 0:00</span>
+      </div>
+      <p class="tool-hint"><span id="vmRegionCount" class="mono">0</span> <span id="vmHint">— pause on a frame, then drag a box over the watermark</span></p>
+
+      <div class="tool-actions">
+        <button class="btn primary" id="btnVmRun" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          Remove watermark
+        </button>
+        <span class="tool-actions-note" id="vmRunNote">Processing plays the video once in real time and records the cleaned result.</span>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="vmResult" hidden>
+      <div class="tool-bar"><span class="file-chip mono" id="vmResultMeta"></span></div>
+      <div class="stage">
+        <div class="stage-fit"><video id="vmResultVideo" controls playsinline></video></div>
+      </div>
+      <div class="tool-actions">
+        <a class="btn primary" id="btnVmDownload" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4v10.5M7.5 11 12 15.5 16.5 11"/><path d="M4.5 19.5h15"/></svg>
+          Download video
+        </a>
+        <a class="btn ghost" id="btnVmOpen" target="_blank" rel="noopener">Open in new tab</a>
+        <button class="btn ghost" id="btnVmBack" type="button">Try again</button>
+      </div>
+    </div>
+  </div>
+</section>
 </main>
 
-<!-- ======= Status bar ======= -->
-<footer id="statusBar" class="statusbar" hidden>
+<!-- ======= Status bar (PDF merger) ======= -->
+<footer id="statusBar" class="statusbar" data-scope="merge" hidden>
   <div class="statusbar-in" aria-live="polite">
     <div class="sb-privacy">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
@@ -140,7 +359,7 @@ try{
       </svg>
       <span class="foot-name">ANTROR</span>
       <span class="foot-div">/</span>
-      <span class="foot-sub">PDF Merger</span>
+      <span class="foot-sub">Tools</span>
     </div>
     <nav class="foot-links" aria-label="Legal and information">
       <button type="button" data-legal="privacy">Privacy Policy</button>
@@ -148,9 +367,10 @@ try{
       <button type="button" data-legal="about">About</button>
       <button type="button" data-legal="contact">Contact</button>
     </nav>
-    <p class="foot-copy mono">© <span id="footYear"></span> ANTROR · Runs entirely in your browser — your files never leave your device.</p>
+    <p class="foot-copy mono">© <span id="footYear"></span> ANTROR · Free tools that run in your browser — your files never leave your device.</p>
   </div>
 </footer>
+
 <!-- ======= Overlays ======= -->
 <div id="dropOverlay" aria-hidden="true">
   <div class="drop-box">
@@ -162,9 +382,14 @@ try{
 <div id="toasts" aria-live="polite"></div>
 <div id="modalRoot"></div>
 <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple hidden>
+<input type="file" id="imFile" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" hidden>
+<input type="file" id="vmFile" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" hidden>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="js/app.js"></script>
+<script src="js/media-tools.js"></script>
+<script src="js/image-watermark.js"></script>
+<script src="js/video-watermark.js"></script>
 </body>
 </html>
