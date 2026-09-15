@@ -1,10 +1,10 @@
 'use strict';
 
 /* =====================================================================
-   ANTROR PDF Merger — application code
-   Sections: icons / state / history / toast / modal / pdf-loader /
-   renderer (thumbnails) / selection / sequence / drag & drop /
-   merge / download / shortcuts / boot.
+   ANTROR Tools — core platform + PDF Merger
+   Sections: helpers / icons / state / history / toast / modal / theme /
+   router / pdf.js / thumbnails / loader / cards / selection / sequence /
+   drag & drop / merge / download / shortcuts / legal / boot.
    ===================================================================== */
 
 /* ---------- helpers ---------- */
@@ -17,7 +17,7 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
 const frame = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
 class UserMsg extends Error {}
 
-/* ---------- icons (inline SVG, stroke-based) ---------- */
+/* ---------- icons ---------- */
 const svg = inner => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
 const I = {
   plus: svg('<path d="M12 5v14M5 12h14"/>'),
@@ -38,22 +38,52 @@ const I = {
   filePlus: svg('<path d="M13.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M13.5 3v5.5H19"/><path d="M12 12v5M9.5 14.5h5"/>'),
 };
 
+/* ---------- router ---------- */
+const ROUTES = {
+  'home':            { sub: 'Tools',                    title: 'ANTROR — Browser Tools' },
+  'merge':           { sub: 'PDF Merger',               title: 'ANTROR — PDF Merger' },
+  'image-watermark': { sub: 'Image Watermark Remover',  title: 'ANTROR — Image Watermark Remover' },
+  'video-watermark': { sub: 'Video Watermark Remover',  title: 'ANTROR — Video Watermark Remover' },
+};
+const Platform = { route: 'home', navigate(r) { location.hash = '#/' + r; } };
+function parseRoute() {
+  const h = location.hash.replace(/^#\/?/, '').replace(/\/+$/, '');
+  return ROUTES[h] ? h : 'home';
+}
+function applyRoute() {
+  Platform.route = parseRoute();
+  Object.keys(ROUTES).forEach(k => { const v = $('#view-' + k); if (v) v.hidden = k !== Platform.route; });
+  syncChrome();
+}
+function syncChrome() {
+  const route = Platform.route;
+  document.body.dataset.route = route;
+  const meta = ROUTES[route];
+  if ($('#topSub')) $('#topSub').textContent = meta.sub;
+  document.title = meta.title;
+  const sb = $('#statusBar');
+  if (route === 'merge') sb.hidden = !state.docs.size;
+  else sb.hidden = true;
+  document.body.classList.toggle('has-workspace', route === 'merge' && !sb.hidden);
+}
+window.addEventListener('hashchange', () => { applyRoute(); window.scrollTo(0, 0); });
+
 /* ---------- state ---------- */
 const MAX_FILE = 200 * 1048576;
 const WARN_FILE = 50 * 1048576;
 const ZOOMS = { s: 104, m: 148, l: 208 };
 const state = {
-  docs: new Map(),      // id -> {id, letter, name, size, bytes, pdf, pageCount, dims, el}
-  order: [],            // doc ids, display & rebuild order
-  selection: new Map(), // docId -> Set<pageNumber>   (selection state — kept separate)
-  sequence: [],         // [{uid, docId, pageNumber}] (final merge order — kept separate)
+  docs: new Map(),
+  order: [],
+  selection: new Map(),
+  sequence: [],
   zoom: 'm',
   activeUid: null,
 };
 let uidSeq = 0, docCounter = 0;
-const flashUids = new Set(); // rows to highlight after render
+const flashUids = new Set();
 
-/* ---------- history (undo / redo) ---------- */
+/* ---------- history ---------- */
 const History = {
   U: [], R: [],
   snap() {
@@ -150,17 +180,26 @@ function btn(label, { kind = 'ghost', icon = '', onClick } = {}) {
   return b;
 }
 
+/* ---------- theme ---------- */
+function setTheme(t, save = true) {
+  document.documentElement.dataset.theme = t;
+  const b = $('#btnTheme');
+  b.innerHTML = t === 'dark' ? I.sun : I.moon;
+  b.setAttribute('aria-label', t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  b.title = t === 'dark' ? 'Light theme' : 'Dark theme';
+  if (save) { try { localStorage.setItem('antror-theme', t); } catch (_) {} }
+}
+
 /* ---------- pdf.js setup ---------- */
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-/* ---------- thumbnail rendering (lazy, queued) ---------- */
-const thumbCache = new Map();   // "docId:page:zoom" -> dataURL
+/* ---------- thumbnail rendering ---------- */
+const thumbCache = new Map();
 const visibleThumbs = new Set();
 const renderTasks = new Map();
 const taskQueue = [];
 let activeRenders = 0; const MAX_RENDERS = 5;
 let seqThumbDirty = false;
-
 const thumbKey = (docId, page) => docId + ':' + page + ':' + state.zoom;
 
 function dprCap() {
@@ -170,7 +209,6 @@ function dprCap() {
   if (total > 150) return Math.min(d, 1.4);
   return Math.min(d, 2);
 }
-
 const thumbObserver = new IntersectionObserver(entries => {
   for (const en of entries) {
     if (en.isIntersecting) { visibleThumbs.add(en.target); enqueueThumb(en.target); }
@@ -218,7 +256,7 @@ async function renderPageToDataURL(doc, pageNumber, targetW) {
   const v1 = page.getViewport({ scale: 1 });
   let scale = targetW / v1.width;
   const px = v1.width * scale * v1.height * scale;
-  if (px > 4.2e6) scale *= Math.sqrt(4.2e6 / px); // cap canvas pixels
+  if (px > 4.2e6) scale *= Math.sqrt(4.2e6 / px);
   const vp = page.getViewport({ scale });
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.floor(vp.width));
@@ -260,7 +298,7 @@ async function addPdf(file) {
   }
   const pageCount = pdf.numPages;
   const dims = new Array(pageCount);
-  for (let i = 0; i < pageCount; i += 48) {           // prefetch page dimensions in batches
+  for (let i = 0; i < pageCount; i += 48) {
     const end = Math.min(i + 48, pageCount);
     await Promise.all(Array.from({ length: end - i }, (_, k) =>
       pdf.getPage(i + 1 + k).then(pg => { const v = pg.getViewport({ scale: 1 }); dims[i + k] = { w: v.width, h: v.height }; })
@@ -273,11 +311,10 @@ async function addPdf(file) {
   state.order.push(doc.id);
   state.selection.set(doc.id, new Set());
   buildDocCard(doc);
-  updateDocsMeta(); updateCounts();
+  updateDocsMeta(); updateCounts(); syncChrome();
   if (file.size > WARN_FILE) toast(`“${file.name}” is large (${fmtBytes(file.size)}). Rendering may take a moment.`);
   return doc;
 }
-
 async function handleFiles(list) {
   const files = [...list];
   if (!files.length) return;
@@ -371,8 +408,6 @@ function updateDocsMeta() {
   const pages = [...state.docs.values()].reduce((a, d) => a + d.pageCount, 0);
   $('#docsMeta').textContent = state.docs.size ? `${state.docs.size} file${state.docs.size > 1 ? 's' : ''} · ${pages} pages` : '';
 }
-
-/* card interactions (delegated) */
  $('#docsList').addEventListener('click', e => {
   const card = e.target.closest('.doc-card'); if (!card) return;
   const doc = state.docs.get(card.dataset.id); if (!doc) return;
@@ -433,7 +468,7 @@ function applyRangeUI(doc) {
   applyRange(doc, res.pages);
 }
 
-/* ---------- selection ops (selection ⇄ sequence stay in sync) ---------- */
+/* ---------- selection ops ---------- */
 function selSet(docId) {
   let s = state.selection.get(docId);
   if (!s) { s = new Set(); state.selection.set(docId, s); }
@@ -601,8 +636,6 @@ function reorderDocs(from, to) {
   rebuildSequence(false);
   toast('Sequence rebuilt in document order.');
 }
-
-/* sequence panel interactions */
  $('#seqList').addEventListener('click', e => {
   const act = e.target.closest('[data-act]');
   if (act) {
@@ -633,9 +666,9 @@ function reorderDocs(from, to) {
     const nr = $(`#seqList .seq-row[data-uid="${en.uid}"]`);
     if (nr) nr.focus();
   };
-  if (e.key === 'Home') move(0);                              // move to beginning
-  else if (e.key === 'End') move(state.sequence.length - 1);  // move to end
-  else if (e.altKey && e.key === 'ArrowUp') move(i - 1);      // keyboard drag alternative
+  if (e.key === 'Home') move(0);
+  else if (e.key === 'End') move(state.sequence.length - 1);
+  else if (e.altKey && e.key === 'ArrowUp') move(i - 1);
   else if (e.altKey && e.key === 'ArrowDown') move(i + 1);
 });
 
@@ -680,13 +713,10 @@ function openInsertModal(anchorUid) {
     if (pg) { insertPage(docId, +pg.dataset.p, anchorUid, pos); m.close(); }
   });
   let m;
-  m = Modal.open({
-    title: 'Insert page', body, width: 520,
-    footer: [btn('Cancel', { onClick: () => m.close() })],
-  });
+  m = Modal.open({ title: 'Insert page', body, width: 520, footer: [btn('Cancel', { onClick: () => m.close() })] });
 }
 
-/* ---------- pointer-based sortable (mouse + touch) ---------- */
+/* ---------- pointer-based sortable ---------- */
 function makeSortable(container, opts) {
   let drag = null;
   container.addEventListener('pointerdown', e => {
@@ -788,7 +818,7 @@ function removeDoc(id) {
   if (state.activeUid && !state.sequence.some(e => e.uid === state.activeUid)) state.activeUid = null;
   if (doc.el) doc.el.remove();
   if (!state.docs.size) showEmpty(); else renderDocsList();
-  renderSequence(); updateCounts();
+  renderSequence(); updateCounts(); syncChrome();
   toast(`Removed “${doc.name}”.`, { action: { label: 'Undo', fn: () => reAddDoc(saved) } });
 }
 async function reAddDoc(d) {
@@ -798,7 +828,7 @@ async function reAddDoc(d) {
   state.order.push(d.id);
   state.selection.set(d.id, new Set());
   buildDocCard(d);
-  showWorkspace(); renderDocsList(); renderSequence(); updateCounts();
+  showWorkspace(); renderDocsList(); renderSequence(); updateCounts(); syncChrome();
 }
 
 /* ---------- clear workspace ---------- */
@@ -823,7 +853,7 @@ function doClear() {
   thumbCache.clear(); flashUids.clear();
   History.clear();
   $('#docsList').innerHTML = '';
-  showEmpty(); renderSequence(); updateCounts(); updateDocsMeta();
+  showEmpty(); renderSequence(); updateCounts(); updateDocsMeta(); syncChrome();
   toast('Workspace cleared.');
 }
 
@@ -834,9 +864,7 @@ function openPreview() {
   const rows = seq.map((e, i) => {
     const d = state.docs.get(e.docId);
     const url = thumbCache.get(thumbKey(e.docId, e.pageNumber));
-    const thumb = url
-      ? `<img class="pv-thumb" src="${url}" alt="">`
-      : `<span class="pv-thumb">${e.pageNumber}</span>`;
+    const thumb = url ? `<img class="pv-thumb" src="${url}" alt="">` : `<span class="pv-thumb">${e.pageNumber}</span>`;
     return `<li class="pv-row"><span class="pv-idx mono">${String(i + 1).padStart(2, '0')}</span>${thumb}
       <span class="pv-name"><i class="doc-chip sm">${d.letter}</i><i title="${esc(d.name)}">${esc(d.name)}</i></span>
       <span class="pv-page">Page ${e.pageNumber}</span></li>`;
@@ -855,7 +883,7 @@ function openPreview() {
 
 /* ---------- merge + download ---------- */
 const CANCEL = Symbol('cancel');
-let mergedUrl = null; // object URL of the last merged PDF — kept alive so the download never breaks
+let mergedUrl = null;
 function revokeMergedUrl() {
   if (!mergedUrl) return;
   try { URL.revokeObjectURL(mergedUrl); } catch (_) {}
@@ -870,7 +898,7 @@ function sanitizeFilename(n) {
 async function mergePDFs() {
   const seq = state.sequence.filter(e => state.docs.has(e.docId));
   if (!seq.length) { toast('Select at least one page before merging.', { type: 'error' }); return; }
-  revokeMergedUrl(); // discard any previous result before starting a new merge
+  revokeMergedUrl();
   let cancelled = false, mergedBytes = null;
   const body = el('div');
   body.innerHTML = `
@@ -896,7 +924,6 @@ async function mergePDFs() {
     </div>`;
   const m = Modal.open({
     title: 'Merging PDFs', body, width: 440, dismissable: false,
-    // Keep the blob URL alive well past any "Save As" dialog — revoking too early aborts the download.
     onClose: () => setTimeout(revokeMergedUrl, 60000),
   });
   const run = $('.m-run', body), done = $('.m-done', body);
@@ -916,8 +943,8 @@ async function mergePDFs() {
   try {
     prog(.04);
     const out = await PDFLib.PDFDocument.create();
-    out.setProducer('ANTROR PDF Merger');
-    out.setCreator('ANTROR PDF Merger');
+    out.setProducer('ANTROR Tools');
+    out.setCreator('ANTROR Tools');
     await stage('prep', async report => {
       const ids = [...new Set(seq.map(e => e.docId))];
       for (let i = 0; i < ids.length; i++) {
@@ -951,10 +978,6 @@ async function mergePDFs() {
       mergedBytes = await out.save({ useObjectStreams: false });
     });
     prog(1);
-    // ---- Complete: build the download link ----
-    // A real <a href="blob:…"> click is the most reliable way to trigger a download:
-    // the browser treats it as a genuine user-initiated action, and the URL stays
-    // alive (revoked only 60s after the dialog closes) so no save dialog can race it.
     mergedUrl = URL.createObjectURL(new Blob([mergedBytes], { type: 'application/pdf' }));
     run.hidden = true; done.hidden = false;
     done.classList.add('play');
@@ -977,7 +1000,7 @@ async function mergePDFs() {
     if (err === CANCEL) toast('Merge cancelled.');
     else { console.error(err); toast('Something went wrong while creating the PDF. Your original files are unchanged.', { type: 'error' }); }
   } finally {
-    state.docs.forEach(d => { delete d._src; }); // release parsed copies
+    state.docs.forEach(d => { delete d._src; });
   }
 }
 
@@ -990,25 +1013,9 @@ function setZoom(z) {
   scheduleSeqThumbRefresh();
 }
 
-/* ---------- theme ---------- */
-function setTheme(t, save = true) {
-  document.documentElement.dataset.theme = t;
-  const b = $('#btnTheme');
-  b.innerHTML = t === 'dark' ? I.sun : I.moon;
-  b.setAttribute('aria-label', t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
-  b.title = t === 'dark' ? 'Light theme' : 'Dark theme';
-  if (save) { try { localStorage.setItem('antror-theme', t); } catch (_) {} }
-}
-
 /* ---------- view toggles & counts ---------- */
-function showWorkspace() {
-  $('#emptyState').hidden = true; $('#appLayout').hidden = false; $('#statusBar').hidden = false;
-  document.body.classList.add('has-workspace');
-}
-function showEmpty() {
-  $('#emptyState').hidden = false; $('#appLayout').hidden = true; $('#statusBar').hidden = true;
-  document.body.classList.remove('has-workspace');
-}
+function showWorkspace() { $('#emptyState').hidden = true; $('#appLayout').hidden = false; syncChrome(); }
+function showEmpty() { $('#emptyState').hidden = false; $('#appLayout').hidden = true; syncChrome(); }
 function updateCounts() {
   const sel = [...state.selection.values()].reduce((a, s) => a + s.size, 0);
   $('#statDocs').textContent = state.docs.size;
@@ -1019,15 +1026,120 @@ function updateCounts() {
   $('#btnMerge').classList.toggle('is-idle', !state.sequence.length);
 }
 
+/* ---------- footer: legal pages ---------- */
+const LEGAL = {
+  privacy: {
+    title: 'Privacy Policy',
+    updated: 'Last updated — January 2025',
+    body: `
+      <div class="legal-hero">
+        ${I.lock}
+        <p><b>The short version:</b> everything happens in your browser. Your files are never uploaded, never transmitted, and never seen by anyone but you.</p>
+      </div>
+      <div class="legal-body">
+        <h4>1. Your files never leave your device</h4>
+        <p>Every ANTROR tool runs locally. PDFs are read into your browser's memory and merged with pdf-lib; images are edited with the Canvas API; videos are processed and re-encoded on your device with standard browser recording APIs. No part of this process transmits your files, file names, or their contents anywhere.</p>
+        <p>Everything is held in memory only. When you close or refresh the tab, all files, selections, and generated documents are discarded.</p>
+        <h4>2. What we store (and don't)</h4>
+        <p>This site stores exactly one value in your browser's localStorage: the key <b>antror-theme</b>, which remembers whether you prefer the light or dark theme. It contains no personal information and no file data.</p>
+        <h4>3. Cookies and tracking</h4>
+        <p>We set no cookies and load no analytics, advertising, or fingerprinting scripts. There is nothing to opt out of.</p>
+        <h4>4. Third-party resources</h4>
+        <p>To stay lightweight, the site loads two open-source libraries (PDF.js and pdf-lib) and two typefaces from public CDNs when the page opens. Those requests go to the CDN operators, who receive standard technical request data such as your IP address — as with any web resource. Your documents are never part of these requests.</p>
+        <p>For maximum privacy, you can download the libraries and host them alongside the site so that no external requests occur at all.</p>
+        <h4>5. Your output files</h4>
+        <p>Final documents are created in memory and handed directly to your browser's own download manager. We have no visibility into what you name them or where you save them.</p>
+        <h4>6. Children's privacy</h4>
+        <p>Because no personal information is collected from any user, nothing is knowingly collected from children under 13, or the equivalent minimum age in your region.</p>
+        <h4>7. Changes to this policy</h4>
+        <p>If this policy changes, the revised version will be posted on this page with an updated date.</p>
+      </div>`
+  },
+  terms: {
+    title: 'Terms & Conditions',
+    updated: 'Last updated — January 2025',
+    body: `
+      <div class="legal-body">
+        <h4>1. Acceptance of terms</h4>
+        <p>By using ANTROR Tools (the "Service"), you agree to these Terms &amp; Conditions. If you do not agree, please do not use the Service.</p>
+        <h4>2. What the Service is</h4>
+        <p>ANTROR Tools is a collection of free, browser-based utilities — including a PDF merger and image/video watermark removal — that process files entirely on your device. The Service has no servers that receive your files.</p>
+        <h4>3. Your files and your rights</h4>
+        <ul>
+          <li>You retain <b>full ownership</b> of every file you process. The Service claims no rights over your content — it never receives a copy.</li>
+          <li>You are responsible for ensuring you have the right to modify the files you process: they must be yours, licensed to you, or handled with permission.</li>
+          <li>Always keep your <b>original files</b>. The Service creates new documents and does not modify your sources.</li>
+        </ul>
+        <h4>4. Acceptable use</h4>
+        <p>You agree to use the Service only for lawful purposes and only with content you are authorized to handle. You may not use the Service to infringe copyrights, remove watermarks from content you do not have rights to modify, breach confidentiality obligations, or process illegal material.</p>
+        <h4>5. No warranty</h4>
+        <p>The Service is provided <b>"as is" and "as available"</b>, without warranties of any kind, express or implied. Automated watermark removal is best-effort: results depend on the background behind each watermark. <b>Please verify your output before relying on it</b> — especially for legal, financial, medical, or official documents.</p>
+        <h4>6. Limitation of liability</h4>
+        <p>To the maximum extent permitted by law, ANTROR and its contributors will not be liable for any loss of data, corrupted files, missed deadlines, lost profits, or any indirect, incidental, or consequential damages arising from your use of — or inability to use — the Service.</p>
+        <h4>7. Intellectual property</h4>
+        <p>The ANTROR name, logo, and interface design are the property of ANTROR. The open-source libraries this site builds on (PDF.js, pdf-lib) remain the property of their respective authors under their own licenses. Your files remain yours alone.</p>
+        <h4>8. Availability and changes</h4>
+        <p>The Service is offered free of charge and may be modified, interrupted, or discontinued at any time. These Terms may be updated from time to time; continued use after changes constitutes acceptance.</p>
+        <h4>9. Governing law</h4>
+        <p>These Terms are governed by the laws of <b>[your jurisdiction]</b>, without regard to conflict-of-law rules.</p>
+      </div>`
+  },
+  about: {
+    title: 'About',
+    updated: 'ANTROR / Tools',
+    body: `
+      <div class="legal-body">
+        <p>ANTROR is a growing collection of small, focused file tools that run entirely in your browser — no accounts, no uploads, no servers processing your documents.</p>
+        <p>Most online file tools upload your files for processing. These don't need to — so they don't. Pages render with PDF.js, documents assemble with pdf-lib, images edit with Canvas, and video is re-encoded on-device. Everything stays local.</p>
+        <div class="legal-contact">
+          <b>Current tools</b><br>
+          PDF Merger · Image Watermark Remover · Video Watermark Remover<br><br>
+          <b>In development</b><br>
+          Split PDF · Compress PDF · Rotate pages · Extract pages
+        </div>
+        <p><b>Version 1.1.0</b> — Tools platform release. Built with HTML, CSS, and vanilla JavaScript. No frameworks, no backend, no tracking.</p>
+      </div>`
+  },
+  contact: {
+    title: 'Contact',
+    updated: 'We usually reply within a few business days',
+    body: `
+      <div class="legal-body">
+        <p>Questions, bug reports, and feature requests are all welcome.</p>
+        <div class="legal-contact">
+          <b>Email</b><br>
+          <a href="mailto:support@antror.com">support@antror.com</a>
+        </div>
+        <h4>Reporting a bug</h4>
+        <p>Please include your browser and version, your operating system, the tool you were using, the steps you took, and any error message shown. There is no need to attach confidential files — issues are almost always reproducible with any sample.</p>
+        <h4>Feature requests</h4>
+        <p>On the roadmap: PDF splitting, compression, rotation, and extraction. If something would make your workflow easier, tell us — the roadmap is shaped by what users actually need.</p>
+      </div>`
+  }
+};
+function openLegal(key) {
+  const page = LEGAL[key];
+  if (!page) return;
+  const body = el('div');
+  body.innerHTML = `<p class="legal-updated">${esc(page.updated)}</p>${page.body}`;
+  let m;
+  m = Modal.open({ title: page.title, body, width: 640, footer: [btn('Close', { onClick: () => m.close() })] });
+}
+ $('#siteFooter').addEventListener('click', e => {
+  const b = e.target.closest('[data-legal]');
+  if (b) openLegal(b.dataset.legal);
+});
+ $('#footYear').textContent = new Date().getFullYear();
+
 /* ---------- boot ---------- */
 function init() {
-  // header controls
   $('#btnUndo').innerHTML = I.undo;
   $('#btnRedo').innerHTML = I.redo;
   $('#btnClearAll').innerHTML = I.trash + '<span>Clear</span>';
   $('#btnSeqReset').innerHTML = I.refresh;
   setTheme(document.documentElement.dataset.theme || 'light', false);
   History.sync();
+  applyRoute();
 
   $('#btnUndo').addEventListener('click', () => History.undo());
   $('#btnRedo').addEventListener('click', () => History.redo());
@@ -1040,7 +1152,6 @@ function init() {
   $('#btnMerge').addEventListener('click', mergePDFs);
   $('#fileInput').addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
 
-  // zoom segment
   $$('#zoomSeg button').forEach(b => b.addEventListener('click', () => {
     if (state.zoom === b.dataset.zoom) return;
     state.zoom = b.dataset.zoom;
@@ -1048,20 +1159,26 @@ function init() {
     setZoom(state.zoom);
   }));
 
-  // drag & drop files (window level)
+  // Global file drag & drop — PDFs only, and only while the merger is open.
   let depth = 0;
   const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
   const overlay = $('#dropOverlay');
-  window.addEventListener('dragenter', e => { if (hasFiles(e)) { e.preventDefault(); depth++; overlay.classList.add('on'); } });
+  window.addEventListener('dragenter', e => {
+    if (!hasFiles(e) || Platform.route !== 'merge') return;
+    e.preventDefault(); depth++; overlay.classList.add('on');
+  });
   window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
   window.addEventListener('dragleave', e => { if (hasFiles(e) && --depth <= 0) { depth = 0; overlay.classList.remove('on'); } });
   window.addEventListener('drop', e => {
-    if (hasFiles(e)) { e.preventDefault(); depth = 0; overlay.classList.remove('on'); handleFiles(e.dataTransfer.files); }
+    if (!hasFiles(e)) return;
+    e.preventDefault(); depth = 0; overlay.classList.remove('on');
+    if (Platform.route === 'merge') handleFiles(e.dataTransfer.files);
   });
 
-  // keyboard shortcuts
+  // Keyboard shortcuts — merger-scoped.
   document.addEventListener('keydown', e => {
     if (Modal.current) return;
+    if (Platform.route !== 'merge') return;
     const t = e.target;
     const typing = (t && t.matches && t.matches('input,textarea,select')) || (t && t.isContentEditable);
     const mod = e.ctrlKey || e.metaKey;
@@ -1080,12 +1197,10 @@ function init() {
     }
   });
 
-  // warn before losing an in-progress workspace
   window.addEventListener('beforeunload', e => {
     if (state.docs.size) { e.preventDefault(); e.returnValue = ''; }
   });
 
-  // library check
   if (typeof pdfjsLib === 'undefined' || typeof PDFLib === 'undefined') {
     toast('PDF libraries failed to load. Check your connection and refresh the page.', { type: 'error' });
   }
@@ -1094,112 +1209,3 @@ function init() {
   updateCounts();
 }
 init();
-
-/* ---------- footer: legal pages ---------- */
-const LEGAL = {
-  privacy: {
-    title: 'Privacy Policy',
-    updated: 'Last updated — January 2025',
-    body: `
-      <div class="legal-hero">
-        ${I.lock}
-        <p><b>The short version:</b> everything happens in your browser. Your files are never uploaded, never transmitted, and never seen by anyone but you.</p>
-      </div>
-      <div class="legal-body">
-        <h4>1. Your documents never leave your device</h4>
-        <p>When you add a PDF, the file is read directly from your disk into your browser's memory using standard browser APIs. Page thumbnails are rendered locally by PDF.js, and the merged document is assembled locally by pdf-lib. No part of this process transmits your files, file names, or page contents anywhere.</p>
-        <p>Everything is held in memory only. When you close or refresh the tab, all uploaded files, selections, and generated documents are discarded. This application stores no document data on disk.</p>
-        <h4>2. What we store (and don't)</h4>
-        <p>This application stores exactly one value in your browser's localStorage: the key <b>antror-theme</b>, which remembers whether you prefer the light or dark theme. It contains no personal information and no document data, and you can clear it at any time through your browser's site-data settings.</p>
-        <h4>3. Cookies and tracking</h4>
-        <p>This app sets no cookies and loads no analytics, advertising, or fingerprinting scripts. There is nothing to opt out of.</p>
-        <h4>4. Third-party resources</h4>
-        <p>To stay lightweight, the app loads two open-source libraries (PDF.js and pdf-lib) and two typefaces from public content-delivery networks when the page opens. Those requests go to the CDN operators (cdnjs/Cloudflare and Google Fonts), who receive standard technical request data such as your IP address — as with any web resource. Your documents are never part of these requests.</p>
-        <p>For maximum privacy, you can download the libraries and host them alongside the app so that no external requests occur at all.</p>
-        <h4>5. Your merged file</h4>
-        <p>The final PDF is created in memory and handed directly to your browser's own download manager. We have no visibility into what you name it or where you save it.</p>
-        <h4>6. Children's privacy</h4>
-        <p>Because no personal information is collected from any user, nothing is knowingly collected from children under 13, or the equivalent minimum age in your region.</p>
-        <h4>7. Changes to this policy</h4>
-        <p>If this policy changes, the revised version will be posted on this page with an updated date. Material changes will be highlighted at the top.</p>
-      </div>`
-  },
-  terms: {
-    title: 'Terms & Conditions',
-    updated: 'Last updated — January 2025',
-    body: `
-      <div class="legal-body">
-        <h4>1. Acceptance of terms</h4>
-        <p>By using ANTROR PDF Merger ("the Service"), you agree to these Terms &amp; Conditions. If you do not agree, please do not use the Service.</p>
-        <h4>2. What the Service is</h4>
-        <p>ANTROR PDF Merger is a free, browser-based tool that lets you select pages from PDF files, arrange them, and merge them into a new PDF. All processing happens locally on your device; the Service has no servers that receive your files.</p>
-        <h4>3. Your documents and your rights</h4>
-        <ul>
-          <li>You retain <b>full ownership</b> of every file you process. The Service claims no rights or license over your content — it never receives a copy.</li>
-          <li>You are responsible for ensuring you have the right to modify the documents you process: they must be yours, licensed to you, or handled with permission.</li>
-          <li>Always keep your <b>original files</b>. The Service creates a new document and does not modify your sources.</li>
-        </ul>
-        <h4>4. Acceptable use</h4>
-        <p>You agree to use the Service only for lawful purposes and only with documents you are authorized to handle. You may not use the Service to infringe copyrights, breach confidentiality obligations, or process illegal content.</p>
-        <h4>5. No warranty</h4>
-        <p>The Service is provided <b>"as is" and "as available"</b>, without warranties of any kind, express or implied, including merchantability, fitness for a particular purpose, and non-infringement. We do not warrant that merging will be uninterrupted or error-free.</p>
-        <p><b>Please verify your output before relying on it</b> — especially for legal, financial, medical, or official documents. Confirm page order, completeness, and readability after downloading.</p>
-        <h4>6. Limitation of liability</h4>
-        <p>To the maximum extent permitted by law, ANTROR and its contributors will not be liable for any loss of data, corrupted files, missed deadlines, lost profits, or any indirect, incidental, or consequential damages arising from your use of — or inability to use — the Service.</p>
-        <h4>7. Intellectual property</h4>
-        <p>The ANTROR name, logo, and interface design are the property of ANTROR. The open-source libraries this app builds on (PDF.js, pdf-lib) remain the property of their respective authors under their own licenses. Your documents remain yours alone.</p>
-        <h4>8. Availability and changes</h4>
-        <p>The Service is offered free of charge and may be modified, interrupted, or discontinued at any time. These Terms may be updated from time to time; the current version is always posted on this page, and continued use after changes constitutes acceptance.</p>
-        <h4>9. Governing law</h4>
-        <p>These Terms are governed by the laws of <b>[your jurisdiction]</b>, without regard to conflict-of-law rules.</p>
-      </div>`
-  },
-  about: {
-    title: 'About',
-    updated: 'ANTROR / PDF Merger',
-    body: `
-      <div class="legal-body">
-        <p>ANTROR PDF Merger is a fast, privacy-first tool for combining PDFs with full control over which pages appear — and in what order. Select pages, drag them into exactly the sequence you need, preview the result, and download a single document.</p>
-        <p>Most online PDF mergers upload your documents to a server for processing. This one doesn't need to — so it doesn't. Thumbnails render with PDF.js and merging happens with pdf-lib, both running locally in your browser. There is no backend, no account, and nothing to log in to.</p>
-        <p>PDF Merger is the first module of the planned <b>ANTROR document toolkit</b>.</p>
-        <div class="legal-contact">
-          <b>Version 1.0.0</b> — MVP release<br>
-          Built with HTML, CSS, and vanilla JavaScript. No frameworks, no backend, no tracking.
-        </div>
-      </div>`
-  },
-  contact: {
-    title: 'Contact',
-    updated: 'We usually reply within a few business days',
-    body: `
-      <div class="legal-body">
-        <p>Questions, bug reports, and feature requests are all welcome.</p>
-        <div class="legal-contact">
-          <b>Email</b><br>
-          <a href="mailto:antrorofficial@gmail.com">antrorofficial@gmail.com</a>
-        </div>
-        <h4>Reporting a bug</h4>
-        <p>Please include your browser and version, your operating system, the steps you took, and any error message shown. There is no need to attach confidential documents — issues are almost always reproducible with any sample PDF.</p>
-        <h4>Feature requests</h4>
-        <p>On the roadmap: page rotation, splitting, extraction, and compression. If something would make your workflow easier, tell us — the roadmap is shaped by what users actually need.</p>
-      </div>`
-  }
-};
-
-function openLegal(key) {
-  const page = LEGAL[key];
-  if (!page) return;
-  const body = el('div');
-  body.innerHTML = `<p class="legal-updated">${esc(page.updated)}</p>${page.body}`;
-  let m;
-  m = Modal.open({
-    title: page.title, body, width: 640,
-    footer: [btn('Close', { onClick: () => m.close() })],
-  });
-}
-
- $('#siteFooter').addEventListener('click', e => {
-  const b = e.target.closest('[data-legal]');
-  if (b) openLegal(b.dataset.legal);
-});
- $('#footYear').textContent = new Date().getFullYear();
