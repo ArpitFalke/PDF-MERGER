@@ -1,13 +1,19 @@
 'use strict';
 
 /* =====================================================================
-   ANTROR Tools — core platform + PDF Merger
-   Sections: helpers / icons / state / history / toast / modal / theme /
-   router / pdf.js / thumbnails / loader / cards / selection / sequence /
-   drag & drop / merge / download / shortcuts / legal / boot.
+   ANTROR Tools — single-file application
+   ORDER MATTERS in this file:
+     1. helpers + icons
+     2. router (Platform)
+     3. PDF merger (state, history, toast, modal, render, merge, legal)
+     4. media engine (RegionEditor, fill modes)
+     5. image tool + video tool (these need 1–4 above)
+     6. boot (init) — last
    ===================================================================== */
 
-/* ---------- helpers ---------- */
+/* ============================================================
+   1. HELPERS + ICONS
+   ============================================================ */
 const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
@@ -15,9 +21,13 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const fmtBytes = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(b < 10240 ? 1 : 0) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const frame = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmtTime = s => { s = Math.max(0, Math.round(s || 0)); const m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); };
+const canvasToUrl = (canvas, type = 'image/png', q) => new Promise((res, rej) => {
+  canvas.toBlob(b => b ? res(URL.createObjectURL(b)) : rej(new Error('blob-failed')), type, q);
+});
 class UserMsg extends Error {}
 
-/* ---------- icons ---------- */
 const svg = inner => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
 const I = {
   plus: svg('<path d="M12 5v14M5 12h14"/>'),
@@ -38,7 +48,9 @@ const I = {
   filePlus: svg('<path d="M13.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M13.5 3v5.5H19"/><path d="M12 12v5M9.5 14.5h5"/>'),
 };
 
-/* ---------- router ---------- */
+/* ============================================================
+   2. ROUTER
+   ============================================================ */
 const ROUTES = {
   'home':            { sub: 'Tools',                    title: 'ANTROR — Browser Tools' },
   'merge':           { sub: 'PDF Merger',               title: 'ANTROR — PDF Merger' },
@@ -68,7 +80,9 @@ function syncChrome() {
 }
 window.addEventListener('hashchange', () => { applyRoute(); window.scrollTo(0, 0); });
 
-/* ---------- state ---------- */
+/* ============================================================
+   3. PDF MERGER
+   ============================================================ */
 const MAX_FILE = 200 * 1048576;
 const WARN_FILE = 50 * 1048576;
 const ZOOMS = { s: 104, m: 148, l: 208 };
@@ -125,7 +139,7 @@ function toast(msg, { type = 'info', action } = {}) {
   setTimeout(close, action ? 6500 : 4200);
 }
 
-/* ---------- modal system ---------- */
+/* ---------- modal ---------- */
 let lastFocused = null;
 const Modal = {
   current: null,
@@ -190,10 +204,10 @@ function setTheme(t, save = true) {
   if (save) { try { localStorage.setItem('antror-theme', t); } catch (_) {} }
 }
 
-/* ---------- pdf.js setup ---------- */
+/* ---------- pdf.js ---------- */
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-/* ---------- thumbnail rendering ---------- */
+/* ---------- thumbnails ---------- */
 const thumbCache = new Map();
 const visibleThumbs = new Set();
 const renderTasks = new Map();
@@ -285,7 +299,7 @@ function refreshSeqThumbs() {
   });
 }
 
-/* ---------- file loading & validation ---------- */
+/* ---------- loading & validation ---------- */
 async function addPdf(file) {
   const buf = await file.arrayBuffer();
   const bytes = new Uint8Array(buf);
@@ -716,7 +730,7 @@ function openInsertModal(anchorUid) {
   m = Modal.open({ title: 'Insert page', body, width: 520, footer: [btn('Cancel', { onClick: () => m.close() })] });
 }
 
-/* ---------- pointer-based sortable ---------- */
+/* ---------- pointer sortable ---------- */
 function makeSortable(container, opts) {
   let drag = null;
   container.addEventListener('pointerdown', e => {
@@ -805,7 +819,7 @@ function makeSortable(container, opts) {
 makeSortable($('#docsList'), { itemSel: '.doc-card', handleSel: '.doc-grip', onReorder: reorderDocs });
 makeSortable($('#seqList'), { itemSel: '.seq-row', handleSel: '.seq-grip', onReorder: reorderSequence, scrollEl: $('#seqList') });
 
-/* ---------- document removal ---------- */
+/* ---------- remove / clear ---------- */
 function removeDoc(id) {
   const doc = state.docs.get(id); if (!doc) return;
   const saved = { id: doc.id, letter: doc.letter, name: doc.name, size: doc.size, bytes: doc.bytes, pageCount: doc.pageCount, dims: doc.dims, pdf: null, el: null };
@@ -830,8 +844,6 @@ async function reAddDoc(d) {
   buildDocCard(d);
   showWorkspace(); renderDocsList(); renderSequence(); updateCounts(); syncChrome();
 }
-
-/* ---------- clear workspace ---------- */
 function confirmClear() {
   if (!state.docs.size) return;
   let m;
@@ -1004,7 +1016,7 @@ async function mergePDFs() {
   }
 }
 
-/* ---------- zoom ---------- */
+/* ---------- zoom / views / counts ---------- */
 function setZoom(z) {
   state.zoom = z;
   document.documentElement.style.setProperty('--thumb-w', ZOOMS[z] + 'px');
@@ -1012,8 +1024,6 @@ function setZoom(z) {
   visibleThumbs.forEach(t => enqueueThumb(t));
   scheduleSeqThumbRefresh();
 }
-
-/* ---------- view toggles & counts ---------- */
 function showWorkspace() { $('#emptyState').hidden = true; $('#appLayout').hidden = false; syncChrome(); }
 function showEmpty() { $('#emptyState').hidden = false; $('#appLayout').hidden = true; syncChrome(); }
 function updateCounts() {
@@ -1026,7 +1036,656 @@ function updateCounts() {
   $('#btnMerge').classList.toggle('is-idle', !state.sequence.length);
 }
 
-/* ---------- footer: legal pages ---------- */
+/* ============================================================
+   4. MEDIA ENGINE (region editor + fill modes)
+   ============================================================ */
+class RegionEditor {
+  constructor({ layer, onChange }) {
+    this.layer = layer;
+    this.onChange = onChange || null;
+    this.regions = [];
+    this.nextId = 1;
+    this.enabled = true;
+    this._draft = null;
+    layer.classList.add('region-layer');
+    layer.addEventListener('pointerdown', e => this._down(e));
+    layer.addEventListener('pointermove', e => this._move(e));
+    window.addEventListener('pointerup', () => this._up());
+    window.addEventListener('pointercancel', () => this._up());
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && this._draft) { this._draft.el.remove(); this._draft = null; }
+    });
+  }
+  _pt(e) {
+    const r = this.layer.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+  }
+  _down(e) {
+    if (!this.enabled || e.button !== 0) return;
+    const del = e.target.closest('.region-del');
+    if (del) {
+      const box = del.closest('.region-box');
+      this.remove(+box.dataset.id);
+      e.preventDefault();
+      return;
+    }
+    e.preventDefault();
+    this.layer.setPointerCapture?.(e.pointerId);
+    const p = this._pt(e);
+    const elm = document.createElement('div');
+    elm.className = 'region-box drafting';
+    this.layer.appendChild(elm);
+    this._draft = { x0: p.x, y0: p.y, x: p.x, y: p.y, w: 0, h: 0, el: elm };
+  }
+  _move(e) {
+    if (!this._draft) return;
+    const p = this._pt(e), d = this._draft;
+    d.x = Math.min(d.x0, p.x); d.y = Math.min(d.y0, p.y);
+    d.w = Math.abs(p.x - d.x0); d.h = Math.abs(p.y - d.y0);
+    this._style(d.el, d);
+  }
+  _style(elm, r) {
+    elm.style.left = r.x * 100 + '%';
+    elm.style.top = r.y * 100 + '%';
+    elm.style.width = r.w * 100 + '%';
+    elm.style.height = r.h * 100 + '%';
+  }
+  _up() {
+    if (!this._draft) return;
+    const d = this._draft; this._draft = null;
+    d.el.remove();
+    if (d.w < 0.012 || d.h < 0.012) return;
+    const x = clamp(d.x, 0, 1), y = clamp(d.y, 0, 1);
+    const r = { id: this.nextId++, x, y, w: Math.min(d.w, 1 - x), h: Math.min(d.h, 1 - y) };
+    this.regions.push(r);
+    this.render();
+    this.onChange && this.onChange();
+  }
+  render() {
+    this.layer.innerHTML = '';
+    this.regions.forEach(r => {
+      const box = document.createElement('div');
+      box.className = 'region-box';
+      box.dataset.id = r.id;
+      this._style(box, r);
+      box.innerHTML = `<button type="button" class="region-del" aria-label="Remove this area">${I.x}</button>`;
+      this.layer.appendChild(box);
+    });
+  }
+  remove(id) {
+    const n = this.regions.length;
+    this.regions = this.regions.filter(r => r.id !== id);
+    if (this.regions.length !== n) { this.render(); this.onChange && this.onChange(); }
+  }
+  undo() {
+    if (!this.regions.length) return;
+    this.regions.pop();
+    this.render();
+    this.onChange && this.onChange();
+  }
+  clear() {
+    if (!this.regions.length) return;
+    this.regions = [];
+    this.render();
+    this.onChange && this.onChange();
+  }
+  reset() { this.regions = []; this.nextId = 1; this.render(); }
+  pixelRects(w, h) {
+    return this.regions.map(r => ({ x: r.x * w, y: r.y * h, w: r.w * w, h: r.h * h }));
+  }
+}
+
+function clampRect(ctx, r) {
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  const x = clamp(Math.floor(r.x), 0, W - 1), y = clamp(Math.floor(r.y), 0, H - 1);
+  const w = clamp(Math.ceil(r.w), 1, W - x), h = clamp(Math.ceil(r.h), 1, H - y);
+  return { x, y, w, h };
+}
+
+/* Smart fill: bilinear boundary init + diffusion passes on a downscaled copy. */
+function smartFillRect(ctx, rect, maxPx = 160000) {
+  const { x: rx, y: ry, w: rw, h: rh } = clampRect(ctx, rect);
+  if (rw < 2 || rh < 2) return;
+  let s = 1;
+  if (rw * rh > maxPx) s = Math.sqrt(maxPx / (rw * rh));
+  const ww = Math.max(2, Math.round(rw * s)), wh = Math.max(2, Math.round(rh * s));
+  const M = Math.max(2, Math.round(28 * s));
+  const sx = Math.max(0, rx - M), sy = Math.max(0, ry - M);
+  const sw = Math.min(ctx.canvas.width - sx, ww + 2 * M);
+  const sh = Math.min(ctx.canvas.height - sy, wh + 2 * M);
+  const work = document.createElement('canvas');
+  work.width = sw; work.height = sh;
+  const wctx = work.getContext('2d', { willReadFrequently: true });
+  wctx.drawImage(ctx.canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  const img = wctx.getImageData(0, 0, sw, sh);
+  const D = img.data;
+  const ox = rx - sx, oy = ry - sy;
+  const cw = sw, ch = sh;
+  const at = (x, y) => (y * cw + x) * 4;
+
+  const n = ww * wh;
+  const cur = new Float32Array(n * 3);
+  for (let y = 0; y < wh; y++) for (let x = 0; x < ww; x++) {
+    const a = at(ox + x, oy + y), i = (y * ww + x) * 3;
+    cur[i] = D[a]; cur[i + 1] = D[a + 1]; cur[i + 2] = D[a + 2];
+  }
+  for (let y = 0; y < wh; y++) {
+    const yy = oy + y;
+    const Li = ox > 0 ? at(ox - 1, yy) : -1;
+    const Ri = ox + ww < cw ? at(ox + ww, yy) : -1;
+    for (let x = 0; x < ww; x++) {
+      const xx = ox + x;
+      const Ti = oy > 0 ? at(xx, oy - 1) : -1;
+      const Bi = oy + wh < ch ? at(xx, oy + wh) : -1;
+      const i = (y * ww + x) * 3;
+      const wx = (x + 0.5) / ww, wy = (y + 0.5) / wh;
+      for (let c = 0; c < 3; c++) {
+        const self = cur[i + c];
+        const l = Li < 0 ? self : D[Li + c], r = Ri < 0 ? self : D[Ri + c];
+        const t = Ti < 0 ? self : D[Ti + c], b = Bi < 0 ? self : D[Bi + c];
+        cur[i + c] = ((l * (1 - wx) + r * wx) + (t * (1 - wy) + b * wy)) * 0.5;
+      }
+    }
+  }
+  const area = ww * wh;
+  const iters = area > 80000 ? 14 : area > 20000 ? 26 : 44;
+  const get = (x, y, c, fb) => {
+    if (x >= 0 && x < ww && y >= 0 && y < wh) return cur[(y * ww + x) * 3 + c];
+    const gx = ox + x, gy = oy + y;
+    if (gx >= 0 && gx < cw && gy >= 0 && gy < ch) return D[at(gx, gy) + c];
+    return fb;
+  };
+  for (let k = 0; k < iters; k++) {
+    const nxt = new Float32Array(n * 3);
+    for (let y = 0; y < wh; y++) {
+      for (let x = 0; x < ww; x++) {
+        const i = (y * ww + x) * 3;
+        for (let c = 0; c < 3; c++) {
+          const self = cur[i + c];
+          nxt[i + c] = (get(x - 1, y, c, self) + get(x + 1, y, c, self) +
+                        get(x, y - 1, c, self) + get(x, y + 1, c, self)) * 0.25;
+        }
+      }
+    }
+    cur.set(nxt);
+  }
+  for (let y = 0; y < wh; y++) for (let x = 0; x < ww; x++) {
+    const a = at(ox + x, oy + y), i = (y * ww + x) * 3;
+    D[a] = cur[i]; D[a + 1] = cur[i + 1]; D[a + 2] = cur[i + 2];
+  }
+  wctx.putImageData(img, 0, 0);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(work, ox, oy, ww, wh, rx, ry, rw, rh);
+  ctx.restore();
+}
+
+function blurRect(ctx, rect, strength = 18) {
+  const { x: rx, y: ry, w: rw, h: rh } = clampRect(ctx, rect);
+  if (rw < 2 || rh < 2) return;
+  const k = clamp(Math.round(strength), 4, 64);
+  const t = document.createElement('canvas');
+  t.width = Math.max(1, Math.round(rw / k));
+  t.height = Math.max(1, Math.round(rh / k));
+  const tc = t.getContext('2d');
+  tc.drawImage(ctx.canvas, rx, ry, rw, rh, 0, 0, t.width, t.height);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(rx, ry, rw, rh); ctx.clip();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(t, 0, 0, t.width, t.height, rx, ry, rw, rh);
+  ctx.restore();
+}
+
+function pixelateRect(ctx, rect, blockSize = 14) {
+  const { x: rx, y: ry, w: rw, h: rh } = clampRect(ctx, rect);
+  if (rw < 2 || rh < 2) return;
+  const k = clamp(Math.round(blockSize), 3, 80);
+  const t = document.createElement('canvas');
+  t.width = Math.max(1, Math.round(rw / k));
+  t.height = Math.max(1, Math.round(rh / k));
+  const tc = t.getContext('2d');
+  tc.drawImage(ctx.canvas, rx, ry, rw, rh, 0, 0, t.width, t.height);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(rx, ry, rw, rh); ctx.clip();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(t, 0, 0, t.width, t.height, rx, ry, rw, rh);
+  ctx.restore();
+}
+
+function applyMode(ctx, r, mode, maxPx) {
+  if (mode === 'blur') blurRect(ctx, r);
+  else if (mode === 'pixel') pixelateRect(ctx, r);
+  else smartFillRect(ctx, r, maxPx);
+}
+
+function pickVideoMime() {
+  const c = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+  ];
+  if (typeof MediaRecorder === 'undefined') return '';
+  for (const m of c) if (MediaRecorder.isTypeSupported(m)) return m;
+  return '';
+}
+const mimeExt = mime => (mime || '').includes('mp4') ? 'mp4' : 'webm';
+
+/* ============================================================
+   5. IMAGE WATERMARK REMOVER
+   ============================================================ */
+(function () {
+  const E = {
+    empty: $('#imEmpty'), drop: $('#imDrop'), add: $('#btnImAdd'), file: $('#imFile'),
+    editor: $('#imEditor'), canvas: $('#imCanvas'), layer: $('#imLayer'),
+    info: $('#imInfo'), replace: $('#btnImReplace'), modeSeg: $('#imModeSeg'),
+    undo: $('#btnImUndo'), clear: $('#btnImClear'), count: $('#imRegionCount'),
+    run: $('#btnImRun'), hint: $('#imHint'),
+    result: $('#imResult'), img: $('#imResultImg'), toggle: $('#imToggleSeg'),
+    download: $('#btnImDownload'), back: $('#btnImBack'), reset: $('#btnImReset'),
+  };
+  const S = { fileName: 'image', fileType: 'image/png', mode: 'fill', origUrl: null, cleanUrl: null, busy: false };
+  const editor = new RegionEditor({ layer: E.layer, onChange: sync });
+
+  function show(which) {
+    E.empty.hidden = which !== 'empty';
+    E.editor.hidden = which !== 'editor';
+    E.result.hidden = which !== 'result';
+  }
+  function sync() {
+    const n = editor.regions.length;
+    E.count.textContent = n;
+    E.undo.disabled = !n; E.clear.disabled = !n;
+    E.run.disabled = S.busy;
+    E.hint.textContent = n === 0
+      ? '— drag on the image to cover each watermark'
+      : n === 1
+        ? '— add more boxes if there are several watermarks, or run the removal'
+        : `— ${n} areas will be reconstructed`;
+  }
+  function resetAll() {
+    editor.reset();
+    if (S.origUrl) URL.revokeObjectURL(S.origUrl);
+    if (S.cleanUrl) URL.revokeObjectURL(S.cleanUrl);
+    S.origUrl = S.cleanUrl = null;
+    S.busy = false; E.run.disabled = false;
+    show('empty');
+  }
+  async function loadFile(file) {
+    const okType = file.type.startsWith('image/') && /png|jpeg|webp|bmp/.test(file.type);
+    if (!okType) { toast('That file isn’t a supported image. Use JPG, PNG or WebP.', { type: 'error' }); return; }
+    if (file.size > 30 * 1048576) { toast('That image is too large (over 30 MB).', { type: 'error' }); return; }
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = () => rej(new Error('decode'));
+        i.src = url;
+      });
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (!w || !h) throw new Error('decode');
+      const cap = 8000;
+      if (Math.max(w, h) > cap) {
+        const k = cap / Math.max(w, h);
+        w = Math.round(w * k); h = Math.round(h * k);
+        toast('Large image scaled down to 8000 px for reliable processing.');
+      }
+      E.canvas.width = w; E.canvas.height = h;
+      const ctx = E.canvas.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      S.fileName = file.name || 'image';
+      S.fileType = file.type || 'image/png';
+      editor.reset();
+      E.info.textContent = `${S.fileName} · ${w}×${h} · ${fmtBytes(file.size)}`;
+      sync();
+      show('editor');
+    } catch (_) {
+      toast('We couldn’t read that image. Try re-saving it and adding it again.', { type: 'error' });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+  async function run() {
+    if (S.busy) return;
+    if (!editor.regions.length) { toast('Drag on the image to mark a watermark first.'); return; }
+    S.busy = true; E.run.disabled = true;
+    const label = E.run.innerHTML;
+    E.run.textContent = 'Removing…';
+    try {
+      await frame();
+      const ctx = E.canvas.getContext('2d');
+      const isJpg = /jpeg/.test(S.fileType);
+      const type = isJpg ? 'image/jpeg' : 'image/png';
+      S.origUrl = await canvasToUrl(E.canvas, type, 0.92);
+      const rects = editor.pixelRects(E.canvas.width, E.canvas.height);
+      for (const r of rects) applyMode(ctx, r, S.mode, 160000);
+      S.cleanUrl = await canvasToUrl(E.canvas, type, 0.92);
+      editor.reset();
+      sync();
+      const base = S.fileName.replace(/\.[^.]+$/, '') || 'image';
+      const ext = isJpg ? 'jpg' : 'png';
+      const name = `${base}-clean.${ext}`;
+      E.download.href = S.cleanUrl;
+      E.download.download = name;
+      E.download.setAttribute('aria-label', `Download ${name}`);
+      setToggle('clean');
+      show('result');
+      toast('Watermark removed — compare and download below.', { type: 'success' });
+    } catch (err) {
+      console.error(err);
+      toast('Something went wrong while processing the image. Your original file is unchanged.', { type: 'error' });
+    } finally {
+      E.run.innerHTML = label;
+      S.busy = false; E.run.disabled = false;
+    }
+  }
+  function setToggle(v) {
+    $$('#imToggleSeg button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+    E.img.src = v === 'orig' ? S.origUrl : S.cleanUrl;
+  }
+
+  const pick = () => E.file.click();
+  E.add.addEventListener('click', pick);
+  E.drop.addEventListener('click', pick);
+  E.drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+  ['dragover', 'dragenter'].forEach(ev => E.drop.addEventListener(ev, e => { e.preventDefault(); E.drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => E.drop.addEventListener(ev, e => { e.preventDefault(); E.drop.classList.remove('over'); }));
+  E.drop.addEventListener('drop', e => { const f = e.dataTransfer.files?.[0]; if (f) loadFile(f); });
+  E.file.addEventListener('change', e => { const f = e.target.files?.[0]; if (f) loadFile(f); e.target.value = ''; });
+  E.replace.addEventListener('click', () => E.file.click());
+  $$('#imModeSeg button').forEach(b => b.addEventListener('click', () => {
+    S.mode = b.dataset.mode;
+    $$('#imModeSeg button').forEach(x => x.classList.toggle('on', x === b));
+  }));
+  E.undo.addEventListener('click', () => editor.undo());
+  E.clear.addEventListener('click', () => editor.clear());
+  E.run.addEventListener('click', run);
+  E.toggle.addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (b) setToggle(b.dataset.view); });
+  E.back.addEventListener('click', () => { show('editor'); sync(); });
+  E.reset.addEventListener('click', resetAll);
+
+  document.addEventListener('keydown', e => {
+    if (Platform.route !== 'image-watermark' || Modal.current) return;
+    const t = e.target;
+    if (t.matches && t.matches('input,textarea,select')) return;
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !E.editor.hidden) { e.preventDefault(); editor.undo(); }
+  });
+})();
+
+/* ============================================================
+   6. VIDEO WATERMARK REMOVER
+   ============================================================ */
+(function () {
+  const E = {
+    empty: $('#vmEmpty'), drop: $('#vmDrop'), add: $('#btnVmAdd'), file: $('#vmFile'),
+    editor: $('#vmEditor'), video: $('#vmVideo'), layer: $('#vmLayer'),
+    info: $('#vmInfo'), replace: $('#btnVmReplace'), modeSeg: $('#vmModeSeg'),
+    undo: $('#btnVmUndo'), clear: $('#btnVmClear'), count: $('#vmRegionCount'),
+    run: $('#btnVmRun'), hint: $('#vmHint'), note: $('#vmRunNote'),
+    play: $('#btnVmPlay'), seek: $('#vmSeek'), time: $('#vmTime'),
+    result: $('#vmResult'), rvideo: $('#vmResultVideo'), rmeta: $('#vmResultMeta'),
+    download: $('#btnVmDownload'), open: $('#btnVmOpen'), back: $('#btnVmBack'),
+  };
+  const IVP = {
+    play: svg('<path d="M8 5.5v13l11-6.5z"/>'),
+    pause: svg('<path d="M8.5 5.5v13M15.5 5.5v13"/>'),
+  };
+  const S = {
+    url: null, fileName: 'video', mode: 'fill',
+    processing: false, cancelFlag: false,
+    resultUrl: null, resultExt: 'webm', audio: null, rec: null,
+  };
+  const editor = new RegionEditor({ layer: E.layer, onChange: sync });
+
+  function show(which) {
+    E.empty.hidden = which !== 'empty';
+    E.editor.hidden = which !== 'editor';
+    E.result.hidden = which !== 'result';
+  }
+  function sync() {
+    const n = editor.regions.length;
+    E.count.textContent = n;
+    E.undo.disabled = !n; E.clear.disabled = !n;
+    E.hint.textContent = n === 0
+      ? '— pause on a frame, then drag a box over the watermark'
+      : `— ${n} area${n > 1 ? 's' : ''} will be cleaned in every frame`;
+    E.run.disabled = S.processing;
+    E.play.innerHTML = E.video.paused ? IVP.play : IVP.pause;
+  }
+  function loadFile(file) {
+    const okType = (file.type && file.type.startsWith('video/')) || /\.(mp4|webm|mov|m4v)$/i.test(file.name || '');
+    if (!okType) { toast('That file isn’t a supported video. Use MP4 or WebM.', { type: 'error' }); return; }
+    cleanupMedia();
+    const url = URL.createObjectURL(file);
+    E.video.src = url;
+    S.url = url;
+    S.fileName = file.name || 'video';
+    const fail = () => toast('We couldn’t read that video. Your browser may not support its codec — try an MP4 (H.264).', { type: 'error' });
+    const timeout = setTimeout(fail, 12000);
+    E.video.onerror = () => { clearTimeout(timeout); fail(); show('empty'); };
+    E.video.onloadedmetadata = () => {
+      clearTimeout(timeout);
+      E.video.onerror = null;
+      const d = E.video.duration;
+      if (!isFinite(d) || d <= 0) { toast('That video’s duration couldn’t be determined.', { type: 'error' }); return; }
+      editor.reset();
+      E.info.textContent = `${S.fileName} · ${E.video.videoWidth}×${E.video.videoHeight} · ${fmtTime(d)} · ${fmtBytes(file.size)}`;
+      E.note.textContent = `Processing plays the video once in real time (about ${fmtTime(d)}) and records the cleaned result.`;
+      sync();
+      show('editor');
+      if (d > 300) toast(`Heads up: a ${fmtTime(d)} video takes about ${fmtTime(d)} to process, in real time.`);
+    };
+  }
+  function cleanupMedia() {
+    if (S.resultUrl) { URL.revokeObjectURL(S.resultUrl); S.resultUrl = null; }
+    if (S.url) { URL.revokeObjectURL(S.url); S.url = null; }
+    E.video.removeAttribute('src'); E.video.load();
+  }
+
+  E.play.addEventListener('click', () => { E.video.paused ? E.video.play() : E.video.pause(); });
+  E.video.addEventListener('play', sync);
+  E.video.addEventListener('pause', sync);
+  E.video.addEventListener('timeupdate', () => {
+    const d = E.video.duration || 0;
+    if (d > 0) E.seek.value = Math.round((E.video.currentTime / d) * 1000);
+    E.time.textContent = `${fmtTime(E.video.currentTime)} / ${fmtTime(E.video.duration)}`;
+  });
+  E.seek.addEventListener('input', () => {
+    const d = E.video.duration || 0;
+    if (d > 0) E.video.currentTime = (E.seek.value / 1000) * d;
+  });
+
+  async function run() {
+    if (S.processing) return;
+    if (!editor.regions.length) { toast('Draw a box over the watermark first.'); return; }
+    const d = E.video.duration;
+    if (d > 150) {
+      let cm;
+      cm = Modal.open({
+        title: 'Ready to process?', width: 430, confirmOnEnter: true,
+        body: `<p class="modal-text">Processing runs in real time — this ${fmtTime(d)} video takes about <b>${fmtTime(d)}</b>. You can cancel anytime.</p>`,
+        footer: [
+          btn('Cancel', { onClick: () => cm.close() }),
+          btn('Start processing', { kind: 'primary', onClick: () => { cm.close(); startProcessing(); } }),
+        ],
+      });
+    } else {
+      startProcessing();
+    }
+  }
+
+  async function startProcessing() {
+    const v = E.video;
+    const vw = v.videoWidth, vh = v.videoHeight, dur = v.duration;
+    if (!vw || !vh || !isFinite(dur)) { toast('This video can’t be processed.', { type: 'error' }); return; }
+    const mime = pickVideoMime();
+    if (!mime) { toast('This browser can’t record video locally. Try Chrome, Edge or Firefox.', { type: 'error' }); return; }
+
+    S.processing = true; S.cancelFlag = false;
+    editor.enabled = false;
+    v.pause();
+
+    const body = el('div');
+    body.innerHTML = `
+      <ul class="m-stages">
+        <li class="active"><span class="m-dot">${I.check}</span><span>Cleaning frames &amp; recording</span><span class="m-meta mono" id="vmStageMeta"></span></li>
+      </ul>
+      <div class="m-bar"><div class="m-fill" id="vmFill"></div></div>
+      <div class="m-runfoot"><span class="m-pct mono" id="vmPct">0%</span><button type="button" class="btn ghost sm" id="vmCancel">Cancel</button></div>`;
+    const m = Modal.open({ title: 'Processing video', body, width: 440, dismissable: false });
+    const fill = $('#vmFill', body), pct = $('#vmPct', body), meta = $('#vmStageMeta', body);
+    const cancelBtn = $('#vmCancel', body);
+    cancelBtn.addEventListener('click', () => { S.cancelFlag = true; cancelBtn.disabled = true; });
+    const prog = t => {
+      const p = clamp(t / dur, 0, 1);
+      fill.style.width = (p * 100).toFixed(1) + '%';
+      pct.textContent = Math.round(p * 100) + '%';
+      meta.textContent = `${fmtTime(t)} / ${fmtTime(dur)}`;
+    };
+
+    const c = document.createElement('canvas');
+    c.width = vw; c.height = vh;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, vh);
+    const rects = editor.pixelRects(vw, vh);
+    const maxPx = 36000;
+
+    const draw = () => {
+      ctx.drawImage(v, 0, 0, vw, vh);
+      for (const r of rects) applyMode(ctx, r, S.mode, maxPx);
+    };
+
+    const stream = c.captureStream(30);
+    try {
+      if (!S.audio) {
+        const actx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = actx.createMediaElementSource(v);
+        const dest = actx.createMediaStreamDestination();
+        src.connect(dest);
+        src.connect(actx.destination);
+        S.audio = { actx, dest };
+      }
+      await S.audio.actx.resume();
+      S.audio.dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+    } catch (_) { /* proceed without audio */ }
+
+    const chunks = [];
+    let rec;
+    try {
+      rec = new MediaRecorder(stream, {
+        mimeType: mime,
+        videoBitsPerSecond: clamp(vw * vh * 6, 2500000, 16000000),
+      });
+    } catch (err) {
+      console.error(err);
+      S.processing = false; editor.enabled = true; m.close();
+      toast('Recording isn’t available in this browser.', { type: 'error' });
+      return;
+    }
+    S.rec = rec;
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    const stopped = new Promise(res => { rec.onstop = res; });
+    rec.start(400);
+
+    const useRVFC = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+    const loop = () => {
+      if (S.cancelFlag || v.ended) return;
+      draw();
+      prog(v.currentTime);
+      if (useRVFC) v.requestVideoFrameCallback(loop);
+      else requestAnimationFrame(loop);
+    };
+
+    const seeked = new Promise(res => {
+      if (v.currentTime === 0) res();
+      else { v.addEventListener('seeked', res, { once: true }); v.currentTime = 0; }
+    });
+    await seeked;
+    draw(); prog(0);
+    try { await v.play(); } catch (_) {}
+    loop();
+
+    const onEnded = () => new Promise(res => { if (v.ended) res(); else v.addEventListener('ended', res, { once: true }); });
+    await onEnded();
+    await delay(350);
+    if (!S.cancelFlag) prog(dur);
+    try { rec.stop(); } catch (_) {}
+    await stopped;
+    m.close();
+
+    S.processing = false; S.rec = null;
+    editor.enabled = true;
+
+    if (S.cancelFlag) {
+      v.pause();
+      sync();
+      toast('Processing cancelled.');
+      return;
+    }
+    const blob = new Blob(chunks, { type: mime });
+    if (!blob.size) {
+      sync();
+      toast('Something went wrong while recording the video. Nothing was changed.', { type: 'error' });
+      return;
+    }
+    if (S.resultUrl) URL.revokeObjectURL(S.resultUrl);
+    S.resultUrl = URL.createObjectURL(blob);
+    S.resultExt = mimeExt(mime);
+    const base = (S.fileName.replace(/\.[^.]+$/, '') || 'video');
+    const name = `${base}-clean.${S.resultExt}`;
+    E.rvideo.src = S.resultUrl;
+    E.download.href = S.resultUrl;
+    E.download.download = name;
+    E.open.href = S.resultUrl;
+    E.rmeta.textContent = `${name} · ${fmtBytes(blob.size)} · ${fmtTime(dur)} · ${S.resultExt.toUpperCase()}`;
+    show('result');
+    v.pause();
+    sync();
+    toast('Video cleaned successfully — preview and download below.', { type: 'success' });
+  }
+
+  const pick = () => E.file.click();
+  E.add.addEventListener('click', pick);
+  E.drop.addEventListener('click', pick);
+  E.drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+  ['dragover', 'dragenter'].forEach(ev => E.drop.addEventListener(ev, e => { e.preventDefault(); E.drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => E.drop.addEventListener(ev, e => { e.preventDefault(); E.drop.classList.remove('over'); }));
+  E.drop.addEventListener('drop', e => { const f = e.dataTransfer.files?.[0]; if (f) loadFile(f); });
+  E.file.addEventListener('change', e => { const f = e.target.files?.[0]; if (f) loadFile(f); e.target.value = ''; });
+  E.replace.addEventListener('click', () => E.file.click());
+  $$('#vmModeSeg button').forEach(b => b.addEventListener('click', () => {
+    S.mode = b.dataset.mode;
+    $$('#vmModeSeg button').forEach(x => x.classList.toggle('on', x === b));
+  }));
+  E.undo.addEventListener('click', () => editor.undo());
+  E.clear.addEventListener('click', () => editor.clear());
+  E.run.addEventListener('click', run);
+  E.back.addEventListener('click', () => {
+    if (S.resultUrl) { URL.revokeObjectURL(S.resultUrl); S.resultUrl = null; }
+    E.rvideo.removeAttribute('src'); E.rvideo.load();
+    show('editor'); sync();
+  });
+  document.addEventListener('keydown', e => {
+    if (Platform.route !== 'video-watermark' || Modal.current) return;
+    const t = e.target;
+    if (t.matches && t.matches('input,textarea,select')) return;
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !E.editor.hidden) { e.preventDefault(); editor.undo(); }
+  });
+  window.addEventListener('beforeunload', e => {
+    if (S.processing) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  sync();
+})();
+
+/* ============================================================
+   7. LEGAL PAGES
+   ============================================================ */
 const LEGAL = {
   privacy: {
     title: 'Privacy Policy',
@@ -1131,7 +1790,9 @@ function openLegal(key) {
 });
  $('#footYear').textContent = new Date().getFullYear();
 
-/* ---------- boot ---------- */
+/* ============================================================
+   8. BOOT — always last
+   ============================================================ */
 function init() {
   $('#btnUndo').innerHTML = I.undo;
   $('#btnRedo').innerHTML = I.redo;
