@@ -44,17 +44,57 @@ const I = {
 
 /* ---------- router (tools add their own entries) ---------- */
 const ROUTES = {
-  'home': { sub: 'Tools', title: 'ANTROR — Browser Tools' },
+  'home': {
+    sub: 'Tools',
+    title: 'ANTROR Tools — Merge PDFs, Convert Images & Clean Files',
+    desc: 'Free browser tools: PDF merger, image to PDF, watermark removers. Everything runs locally — your files never leave your device.'
+  },
+  'merge': {
+    sub: 'PDF Merger',
+    title: 'Free PDF Merger — Select & Arrange Pages Online | ANTROR',
+    desc: 'Merge PDF files online free. Select exact pages from multiple PDFs, arrange them in any order, preview and download. 100% in your browser, no upload.'
+  },
+  'image-watermark': {
+    sub: 'Image Watermark Remover',
+    title: 'Image Watermark Remover — Free & Private | ANTROR',
+    desc: 'Remove watermarks from images online free. Mark the area and smart-fill erases it — JPG, PNG, WebP. Processed locally, nothing is uploaded.'
+  },
+  'video-watermark': {
+    sub: 'Video Watermark Remover',
+    title: 'Video Watermark Remover — Free & Local | ANTROR',
+    desc: 'Remove static watermarks from videos free. Mark the watermark once — every frame is cleaned on your device. No upload, no server.'
+  },
+  'image-to-pdf': {
+    sub: 'Image to PDF',
+    title: 'Image to PDF Converter — JPG/PNG to PDF Online Free | ANTROR',
+    desc: 'Convert JPG, PNG and WebP images to a single PDF free. Arrange page order, choose A4/Letter size and margins. Runs entirely in your browser.'
+  },
 };
 const Platform = {
   route: 'home',
-  syncExtras: [], // functions run on every route change (tools push here)
-  navigate(r) { location.hash = '#/' + r; },
+  syncExtras: [],
+  navigate(r) {
+    if (r === 'home') history.pushState({}, '', '/');
+    else history.pushState({}, '', '/' + r);
+    applyRoute();
+  },
 };
+// Make in-app <a href="#/..."> links use pushState so the URL becomes /merge etc.
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href^="#/"]');
+  if (!a) return;
+  e.preventDefault();
+  Platform.navigate(a.getAttribute('href').replace(/^#\/?/, ''));
+  window.scrollTo(0, 0);
+});
 function parseRoute() {
-  const h = location.hash.replace(/^#\/?/, '').replace(/\/+$/, '');
+  // Path-based routing: /merge → 'merge'. Falls back to #/ style.
+  let h = location.pathname.replace(/^\/+|\/+$/g, '');
+  if (!h) h = location.hash.replace(/^#\/?/, '').replace(/\/+$/, '');
   return ROUTES[h] ? h : 'home';
 }
+window.addEventListener('popstate', () => { applyRoute(); window.scrollTo(0, 0); });
+window.addEventListener('hashchange', () => { applyRoute(); window.scrollTo(0, 0); });
 function applyRoute() {
   Platform.route = parseRoute();
   Object.keys(ROUTES).forEach(k => { const v = $('#view-' + k); if (v) v.hidden = k !== Platform.route; });
@@ -65,6 +105,8 @@ function syncChrome() {
   const meta = ROUTES[Platform.route];
   if ($('#topSub')) $('#topSub').textContent = meta.sub;
   document.title = meta.title;
+  const md = document.querySelector('meta[name="description"]');
+  if (md && meta.desc) md.setAttribute('content', meta.desc);
   Platform.syncExtras.forEach(f => { try { f(); } catch (_) {} });
 }
 window.addEventListener('hashchange', () => { applyRoute(); window.scrollTo(0, 0); });
