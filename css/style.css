@@ -432,3 +432,4 @@ input[type="range"].seek:focus-visible{outline:2px solid var(--accent);outline-o
   .tool-actions-note{display:none}
   .file-chip{max-width:200px}
 }
+.seo-nav{position:absolute;left:-9999px}
