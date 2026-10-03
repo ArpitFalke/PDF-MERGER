@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>ANTROR</title>
+  <rect width="512" height="512" rx="116" fill="#F1EEE6"/>
+  <!-- crossbar: bursts past both legs -->
+  <rect x="58" y="288" width="396" height="58" fill="#E8501F"/>
+  <!-- legs (meet at open apex) -->
+  <path d="M186 90h64L150 440H86Z" fill="#1D1B18"/>
+  <path d="M262 90h64L426 440h-64Z" fill="#1D1B18"/>
+  <!-- apex spark tick -->
+  <rect x="244" y="40" width="24" height="44" fill="#1D1B18"/>
+</svg>
