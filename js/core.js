@@ -79,13 +79,25 @@ const Platform = {
     applyRoute();
   },
 };
-// Make in-app <a href="#/..."> links use pushState so the URL becomes /merge etc.
+// Internal navigation via pushState — catches /path and legacy #/path links.
 document.addEventListener('click', e => {
-  const a = e.target.closest('a[href^="#/"]');
+  const a = e.target.closest('a[href]');
   if (!a) return;
-  e.preventDefault();
-  Platform.navigate(a.getAttribute('href').replace(/^#\/?/, ''));
-  window.scrollTo(0, 0);
+  const href = a.getAttribute('href');
+  if (href.startsWith('/') && !href.startsWith('//')) {
+    const route = href.replace(/^\/+|\/+$/g, '') || 'home';
+    if (ROUTES[route]) {
+      e.preventDefault();
+      Platform.navigate(route);
+      window.scrollTo(0, 0);
+    }
+    return;
+  }
+  if (href.startsWith('#/')) {
+    e.preventDefault();
+    Platform.navigate(href.replace(/^#\/?/, ''));
+    window.scrollTo(0, 0);
+  }
 });
 function parseRoute() {
   // Path-based routing: /merge → 'merge'. Falls back to #/ style.
