@@ -69,11 +69,11 @@ const LEGAL = {
         <p>Most online file tools upload your files for processing. These don't need to — so they don't. Pages render with PDF.js, documents assemble with pdf-lib, images edit with Canvas, and video is re-encoded on-device. Everything stays local.</p>
         <div class="legal-contact">
           <b>Current tools</b><br>
-          PDF Merger · Image Watermark Remover · Video Watermark Remover · Image to PDF<br><br>
+          PDF Merger · Image Watermark Remover · Video Watermark Remover · Image to PDF · Video Editor<br><br>
           <b>In development</b><br>
           Split PDF · Compress PDF · Rotate pages · Extract pages
         </div>
-        <p><b>Version 1.2.0</b> — Image to PDF release. Built with HTML, CSS, and vanilla JavaScript. No frameworks, no backend, no tracking.</p>
+        <p><b>Version 1.1.2</b> — Image to PDF release. Built with HTML, CSS, and vanilla JavaScript. No frameworks, no backend, no tracking.</p>
       </div>`
   },
   contact: {
@@ -84,7 +84,7 @@ const LEGAL = {
         <p>Questions, bug reports, and feature requests are all welcome.</p>
         <div class="legal-contact">
           <b>Email</b><br>
-          <a href="mailto:support@antror.com">support@antror.com</a>
+          <a href="mailto:falkearpit@gmail.com">falkearpit@gmail.com</a>
         </div>
         <h4>Reporting a bug</h4>
         <p>Please include your browser and version, your operating system, the tool you were using, the steps you took, and any error message shown. There is no need to attach confidential files — issues are almost always reproducible with any sample.</p>
