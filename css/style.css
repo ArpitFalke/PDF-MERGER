@@ -488,3 +488,11 @@ input[type="range"].seek:focus-visible{outline:2px solid var(--accent);outline-o
   .ve-bin{max-height:220px}
   .ve-stage canvas{max-height:36vh}
 }
+/* ============ 22. Video editor v2 additions ============ */
+.chip-btn:disabled{opacity:.4;pointer-events:none}
+.ve-bin-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ve-clip.kind-overlay{background-color:var(--surface-2);border-color:var(--text-2);border-style:dotted}
+.ve-clip.kind-audio{background:repeating-linear-gradient(135deg,var(--surface-2) 0 6px,var(--bg) 6px 12px)}
+.ve-beat{position:absolute;top:2px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--accent);pointer-events:none}
+.ve-tl-foot{padding:6px 12px;border-top:1px solid var(--border);font-size:10.5px;color:var(--text-2)}
+select.input{appearance:auto}
