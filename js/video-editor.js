@@ -444,13 +444,14 @@ ROUTES['video-editor'] = {
     if (document.activeElement !== E.seek) E.seek.value = dur ? Math.round(S.ph / dur * 1000) : 0;
   }
   function play() {
-    if (S.exporting || !S.clips.length) return;
-    ensureAudio();
-    if (S.ph >= projDur() - 0.01) S.ph = 0;
-    S.playing = true; setPlayIcon();
-    lastT = performance.now();
-    requestAnimationFrame(tick);
-  }
+  if (!S.clips.length) return;
+  if (S.playing) return;
+  ensureAudio();
+  if (S.ph >= projDur() - 0.01) S.ph = 0;
+  S.playing = true; setPlayIcon();
+  lastT = performance.now();
+  requestAnimationFrame(tick);
+}
   function pause() {
     S.playing = false; setPlayIcon();
     S.clips.forEach(c => { if (c.el && !c.el.paused) c.el.pause(); });
