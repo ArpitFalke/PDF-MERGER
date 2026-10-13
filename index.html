@@ -439,6 +439,7 @@ try{
   </div>
 </section>
   <!-- ================= VIDEO EDITOR ================= -->
+<!-- ================= VIDEO EDITOR ================= -->
 <section id="view-video-editor" hidden>
   <input type="file" id="veFile" accept="video/*,audio/*,image/*" multiple hidden>
   <div class="ve-wrap">
@@ -448,10 +449,14 @@ try{
         Add media
       </button>
       <span class="tool-bar-sep"></span>
-      <div class="seg" id="veResSeg" role="group" aria-label="Export resolution">
-        <button type="button" data-res="854x480">480p</button>
-        <button type="button" data-res="1280x720" class="on">720p</button>
-        <button type="button" data-res="1920x1080">1080p</button>
+      <div class="seg" id="veLayoutSeg" role="group" aria-label="Aspect ratio">
+        <button type="button" data-layout="16:9" class="on">16:9</button>
+        <button type="button" data-layout="9:16">9:16</button>
+        <button type="button" data-layout="1:1">1:1</button>
+      </div>
+      <div class="seg" id="veQualitySeg" role="group" aria-label="Quality">
+        <button type="button" data-q="720" class="on">720p</button>
+        <button type="button" data-q="1080">1080p</button>
       </div>
       <span class="tool-bar-spacer"></span>
       <button class="chip-btn" id="btnVeClear" type="button">Clear project</button>
@@ -463,9 +468,12 @@ try{
 
     <div class="ve-main">
       <div class="ve-bin">
-        <span class="label">Media</span>
+        <div class="ve-bin-head">
+          <span class="label">Media</span>
+          <button class="chip-btn" id="btnVeSeq" type="button" title="Add all videos & images to the timeline in order">Auto-sequence</button>
+        </div>
         <div class="ve-bin-list" id="veBin"></div>
-        <p class="ve-bin-empty" id="veBinEmpty">Add video, audio or image files to begin, then send them to the timeline.</p>
+        <p class="ve-bin-empty" id="veBinEmpty">Add video, audio or image files — or drop them anywhere on this page.</p>
       </div>
 
       <div class="ve-preview">
@@ -486,6 +494,7 @@ try{
         <button class="chip-btn" id="btnVeAddText" type="button">+ Text</button>
         <button class="chip-btn" id="btnVeSplit" type="button">Split at playhead</button>
         <button class="chip-btn" id="btnVeDelete" type="button">Delete selected</button>
+        <button class="chip-btn" id="btnVeRipple" type="button" title="When on, deleting a video clip closes the gap (ripple delete)">Ripple: off</button>
         <span class="tool-bar-spacer"></span>
         <button class="chip-btn" id="btnVeZoomOut" type="button" aria-label="Zoom out">−</button>
         <button class="chip-btn" id="btnVeZoomIn" type="button" aria-label="Zoom in">+</button>
@@ -494,11 +503,13 @@ try{
         <div class="ve-tl-inner" id="veTlInner">
           <div class="ve-ruler" id="veRuler"></div>
           <div class="ve-track"><div class="ve-track-label">Text</div><div class="ve-lane" data-lane="text"></div></div>
+          <div class="ve-track"><div class="ve-track-label">Overlay</div><div class="ve-lane" data-lane="overlay"></div></div>
           <div class="ve-track"><div class="ve-track-label">Video</div><div class="ve-lane" data-lane="video"></div></div>
           <div class="ve-track"><div class="ve-track-label">Audio</div><div class="ve-lane" data-lane="audio"></div></div>
           <div class="ve-playhead" id="vePlayhead"></div>
         </div>
       </div>
+      <div class="ve-tl-foot">Drag to move · drag edges to trim · clips snap to edges, playhead &amp; beats · S split · Del delete · Space play</div>
     </div>
   </div>
 </section>
